@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\EducationalVideo\QueueVideoGenerationAction;
 use App\Enums\VideoFormat;
 use App\Enums\VideoTemplate;
 use App\Enums\VoiceType;
 use App\Http\Requests\StoreEducationalVideoRequest;
-use App\Jobs\ProcessEducationalVideo;
 use App\Models\EducationalVideo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
@@ -63,7 +63,7 @@ class EducationalVideoController extends Controller
             'format' => $data['format'],
         ]);
 
-        ProcessEducationalVideo::dispatch($video);
+        (new QueueVideoGenerationAction)->handle($video);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Your video is being generated.')]);
 

@@ -6,11 +6,15 @@ use App\Enums\VideoFormat;
 use App\Enums\VideoStatus;
 use App\Enums\VideoTemplate;
 use App\Enums\VoiceType;
-use App\Jobs\ProcessEducationalVideo;
+use App\Jobs\EducationalVideo\BuildRenderManifestJob;
+use App\Jobs\EducationalVideo\GenerateStoryboardJob;
+use App\Jobs\EducationalVideo\IllustrateSlidesJob;
+use App\Jobs\EducationalVideo\NarrateSlidesJob;
+use App\Jobs\EducationalVideo\RenderEducationalVideoJob;
 use App\Models\EducationalVideo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -52,9 +56,9 @@ class EducationalVideoControllerTest extends TestCase
             ->assertSessionHasErrors(['pdf', 'voice', 'template', 'format']);
     }
 
-    public function test_store_creates_a_video_and_dispatches_the_generation_job()
+    public function test_store_creates_a_video_and_dispatches_the_generation_pipeline()
     {
-        Queue::fake();
+        Bus::fake();
         Storage::fake('local');
 
         $response = $this->post(route('educational-videos.store'), [
@@ -73,7 +77,13 @@ class EducationalVideoControllerTest extends TestCase
         $this->assertSame(VoiceType::Nova, $video->voice);
         Storage::disk('local')->assertExists($video->source_pdf_path);
 
-        Queue::assertPushed(ProcessEducationalVideo::class, fn ($job) => $job->video->is($video));
+        Bus::assertChained([
+            GenerateStoryboardJob::class,
+            NarrateSlidesJob::class,
+            IllustrateSlidesJob::class,
+            BuildRenderManifestJob::class,
+            RenderEducationalVideoJob::class,
+        ]);
     }
 
     public function test_show_displays_the_video_status()

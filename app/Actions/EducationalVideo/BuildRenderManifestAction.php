@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Actions\EducationalVideo;
+
+use App\Models\EducationalVideo;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+
+class BuildRenderManifestAction
+{
+    /**
+     * Write the render manifest and copy narration/illustration assets into the Remotion
+     * project's public folder, ready for `RenderVideoAction` to read at render time.
+     *
+     * @param  array<string, mixed>  $storyboard
+     * @param  array<int, array<string, mixed>>  $slides
+     * @throws \JsonException
+     */
+    public function handle(EducationalVideo $video, array $storyboard, array $slides): void
+    {
+        $generatedPath = $this->generatedAssetsPath($video);
+
+        File::ensureDirectoryExists($generatedPath.'/audio');
+        File::ensureDirectoryExists($generatedPath.'/images');
+
+        $manifestSlides = collect($slides)->map(function (array $slide) use ($generatedPath): array {
+            $audioFilename = "slide-{$slide['index']}.mp3";
+
+            File::copy(Storage::disk('local')->path($slide['audioPath']), $generatedPath."/audio/{$audioFilename}");
+
+            $imageFile = null;
+
+            if (($slide['imagePath'] ?? null) !== null) {
+                $imageFilename = "slide-{$slide['index']}.png";
+
+                File::copy(Storage::disk('local')->path($slide['imagePath']), $generatedPath."/images/{$imageFilename}");
+
+                $imageFile = "images/{$imageFilename}";
+            }
+
+            return [
+                'type' => $slide['type'],
+                'heading' => $slide['heading'],
+                'narration' => $slide['narration'],
+                'bullets' => $slide['bullets'] ?? null,
+                'formula' => $slide['formula'] ?? null,
+                'highlightTerms' => $slide['highlightTerms'] ?? null,
+                'audioFile' => "audio/{$audioFilename}",
+                'imageFile' => $imageFile,
+            ];
+        })->all();
+
+        File::put($generatedPath.'/manifest.json', json_encode([
+            'title' => $storyboard['title'],
+            'summary' => $storyboard['summary'],
+            'template' => $video->template->value,
+            'format' => $video->format->value,
+            'slides' => $manifestSlides,
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        Log::info("[EducationalVideo #{$video->id}] Render manifest written", ['path' => $generatedPath.'/manifest.json']);
+    }
+
+    /**
+     * The path, inside the Remotion project's public folder, where this video's render assets live.
+     */
+    private function generatedAssetsPath(EducationalVideo $video): string
+    {
+        return config('services.remotion.path')."/public/generated/{$video->id}";
+    }
+}

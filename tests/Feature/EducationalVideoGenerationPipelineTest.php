@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\GenerateEducationalVideo;
+use App\Actions\EducationalVideo\QueueVideoGenerationAction;
 use App\Ai\Agents\StoryboardWriter;
 use App\Enums\VideoStatus;
 use App\Models\EducationalVideo;
@@ -14,7 +14,13 @@ use Laravel\Ai\Audio;
 use Laravel\Ai\Image;
 use Tests\TestCase;
 
-class GenerateEducationalVideoActionTest extends TestCase
+/**
+ * Exercises the full generate-storyboard -> narrate -> illustrate -> build-manifest -> render
+ * pipeline exactly as it runs in production: as a chain of queued jobs. The `sync` queue
+ * connection used in testing runs the whole chain in-process, so this is a faithful
+ * end-to-end test without needing a real queue worker.
+ */
+class EducationalVideoGenerationPipelineTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -90,7 +96,7 @@ class GenerateEducationalVideoActionTest extends TestCase
             return 0;
         });
 
-        app(GenerateEducationalVideo::class)->handle($video);
+        (new QueueVideoGenerationAction)->handle($video);
 
         $video->refresh();
 
@@ -137,7 +143,7 @@ class GenerateEducationalVideoActionTest extends TestCase
             return 0;
         });
 
-        app(GenerateEducationalVideo::class)->handle($video);
+        (new QueueVideoGenerationAction)->handle($video);
 
         $video->refresh();
 
@@ -166,10 +172,11 @@ class GenerateEducationalVideoActionTest extends TestCase
         Process::fake(fn () => 1);
 
         try {
-            app(GenerateEducationalVideo::class)->handle($video);
-            $this->fail('Expected the action to throw when rendering fails.');
+            (new QueueVideoGenerationAction)->handle($video);
+            $this->fail('Expected the pipeline to throw when rendering fails.');
         } catch (\Throwable) {
-            // Expected: the render step throws after marking the video as failed.
+            // Expected: with the `sync` queue driver used in testing, the failed job's
+            // exception is rethrown to the caller after the chain's `catch()` callback runs.
         }
 
         $video->refresh();
