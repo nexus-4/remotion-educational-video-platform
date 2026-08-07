@@ -6,6 +6,7 @@ const SLIDE_BADGE_LABEL: Record<SlideData["type"], string> = {
   content: "Ideia Chave",
   formula: "Formula",
   example: "Exemplo",
+  outro: "Fim",
 };
 
 export const SlideBadge: React.FC<{

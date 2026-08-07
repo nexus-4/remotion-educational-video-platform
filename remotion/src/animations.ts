@@ -3,6 +3,7 @@ import { Easing, interpolate } from "remotion";
 export const ENTRANCE_DURATION_IN_FRAMES = 20;
 export const HIGHLIGHT_STAGGER_IN_FRAMES = 12;
 export const KEN_BURNS_END_SCALE = 1.06;
+export const EMPHASIS_DURATION_IN_FRAMES = 15;
 
 /** Fade in + slide up from `distance`px, starting at `startFrame`. */
 export const fadeSlideUp = (

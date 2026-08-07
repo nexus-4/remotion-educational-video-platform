@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AnimationStyle;
 use App\Enums\IllustrationStyle;
 use App\Enums\VideoFormat;
 use App\Enums\VideoTemplate;
@@ -26,6 +27,7 @@ class StoreEducationalVideoRequest extends FormRequest
             'template' => ['required', Rule::enum(VideoTemplate::class)],
             'format' => ['required', Rule::enum(VideoFormat::class)],
             'illustration_style' => ['required', Rule::enum(IllustrationStyle::class)],
+            'animation_style' => ['required', Rule::enum(AnimationStyle::class)],
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\EducationalVideo\QueueVideoGenerationAction;
+use App\Enums\AnimationStyle;
 use App\Enums\IllustrationStyle;
 use App\Enums\VideoFormat;
 use App\Enums\VideoTemplate;
@@ -30,6 +31,7 @@ class EducationalVideoController extends Controller
                     'title' => $video->title ?? $video->storyboard['title'] ?? 'Untitled video',
                     'status' => $video->status->value,
                     'statusLabel' => $video->status->label(),
+                    'template' => $video->template->value,
                     'createdAt' => $video->created_at?->toIso8601String(),
                 ]),
         ]);
@@ -41,10 +43,18 @@ class EducationalVideoController extends Controller
     public function create(): Response
     {
         return Inertia::render('educational-videos/create', [
-            'voices' => $this->options(VoiceType::cases()),
+            'voices' => array_map(
+                fn (VoiceType $voice): array => [
+                    'value' => $voice->value,
+                    'label' => $voice->label(),
+                    'sampleUrl' => $this->voiceSampleUrl($voice),
+                ],
+                VoiceType::cases(),
+            ),
             'templates' => $this->options(VideoTemplate::cases()),
             'formats' => $this->options(VideoFormat::cases()),
             'illustrationStyles' => $this->options(IllustrationStyle::cases()),
+            'animationStyles' => $this->options(AnimationStyle::cases()),
         ]);
     }
 
@@ -64,6 +74,7 @@ class EducationalVideoController extends Controller
             'template' => $data['template'],
             'format' => $data['format'],
             'illustration_style' => $data['illustration_style'],
+            'animation_style' => $data['animation_style'],
         ]);
 
         (new QueueVideoGenerationAction)->handle($video);
@@ -87,6 +98,9 @@ class EducationalVideoController extends Controller
                 'progress' => $video->progress,
                 'error' => $video->error,
                 'videoUrl' => $video->video_path ? Storage::disk('public')->url($video->video_path) : null,
+                'slides' => collect($video->storyboard['slides'] ?? [])
+                    ->map(fn (array $slide): array => ['type' => $slide['type'], 'heading' => $slide['heading']])
+                    ->all(),
             ],
         ]);
     }
@@ -94,14 +108,24 @@ class EducationalVideoController extends Controller
     /**
      * Map backed enum cases to value/label options for the frontend.
      *
-     * @param  array<int, IllustrationStyle|VideoFormat|VideoTemplate|VoiceType>  $cases
+     * @param  array<int, AnimationStyle|IllustrationStyle|VideoFormat|VideoTemplate|VoiceType>  $cases
      * @return array<int, array{value: string, label: string}>
      */
     private function options(array $cases): array
     {
         return array_map(
-            fn (IllustrationStyle|VideoFormat|VideoTemplate|VoiceType $case): array => ['value' => $case->value, 'label' => $case->label()],
+            fn (AnimationStyle|IllustrationStyle|VideoFormat|VideoTemplate|VoiceType $case): array => ['value' => $case->value, 'label' => $case->label()],
             $cases,
         );
+    }
+
+    /**
+     * The public URL of the pre-generated sample clip for a voice, if it has been generated.
+     */
+    private function voiceSampleUrl(VoiceType $voice): ?string
+    {
+        $path = "voice-samples/{$voice->value}.mp3";
+
+        return Storage::disk('public')->exists($path) ? Storage::disk('public')->url($path) : null;
     }
 }

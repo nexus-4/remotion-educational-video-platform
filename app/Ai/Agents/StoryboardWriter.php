@@ -37,18 +37,23 @@ class StoryboardWriter implements Agent, HasStructuredOutput
             Write in {$style}.
             Use simple vocabulary, short sentences, and concrete examples a young student can picture.
             Base every slide strictly on the attached document — never invent facts that aren't supported by it.
-            The storyboard must contain between {$this->format->minimumSlides()} and {$this->format->maximumSlides()} slides.
-            The first slide must be of type "intro" and briefly welcomes the student to the topic.
+            The storyboard must contain between {$this->format->minimumSlides()} and {$this->format->maximumSlides()} slides,
+            following an intro -> middle -> ending arc:
+            - The FIRST slide must be of type "intro": briefly welcomes the student to the topic.
+            - The LAST slide must be of type "outro": warmly wraps up by recapping the single most important
+              takeaway from the video in one sentence, then closes with a short, encouraging line for the student.
+              Never end the video on a content, example, or formula slide.
+            - Every slide in between is "content", "example", or "formula", filling the rest of the slide count.
             Use "formula" slides only for mathematical or scientific formulas that appear in the document.
             Use "example" slides to walk through a worked example or a concrete, relatable scenario.
             For each slide, list 1-4 "highlightTerms" — the exact key words or phrases from that slide's
             narration that should be visually highlighted as they are spoken.
 
-            For every slide except "formula" slides, write an "imagePrompt": a short, literal description
-            of the objects, process, or scene to depict (e.g. "a plant's roots absorbing water from soil,
-            cross-section view" or "the water cycle showing evaporation from the ocean and rain falling on
-            mountains"). Describe only the SUBJECT MATTER, not an art style — the rendering style is applied
-            separately. Leave "imagePrompt" null for "formula" slides.
+            For every slide except "formula" and "outro" slides, write an "imagePrompt": a short, literal
+            description of the objects, process, or scene to depict (e.g. "a plant's roots absorbing water
+            from soil, cross-section view" or "the water cycle showing evaporation from the ocean and rain
+            falling on mountains"). Describe only the SUBJECT MATTER, not an art style — the rendering style
+            is applied separately. Leave "imagePrompt" null for "formula" and "outro" slides.
             INSTRUCTIONS;
     }
 
@@ -74,7 +79,7 @@ class StoryboardWriter implements Agent, HasStructuredOutput
                 ->items(
                     $schema->object([
                         'type' => $schema->string()
-                            ->enum(['intro', 'content', 'formula', 'example'])
+                            ->enum(['intro', 'content', 'formula', 'example', 'outro'])
                             ->description('The kind of slide this is.')
                             ->required(),
                         'heading' => $schema->string()
@@ -95,7 +100,7 @@ class StoryboardWriter implements Agent, HasStructuredOutput
                             ->description('Key words from the narration to visually highlight as they are spoken.')
                             ->nullable(),
                         'imagePrompt' => $schema->string()
-                            ->description('A short, literal description of the subject matter to illustrate for this slide (no art-style words). Null for "formula" slides.')
+                            ->description('A short, literal description of the subject matter to illustrate for this slide (no art-style words). Null for "formula" and "outro" slides.')
                             ->nullable(),
                     ])->withoutAdditionalProperties()
                 )

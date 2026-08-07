@@ -15,6 +15,7 @@ class BuildRenderManifestAction
      *
      * @param  array<string, mixed>  $storyboard
      * @param  array<int, array<string, mixed>>  $slides
+     *
      * @throws \JsonException
      */
     public function handle(EducationalVideo $video, array $storyboard, array $slides): void
@@ -56,6 +57,7 @@ class BuildRenderManifestAction
             'summary' => $storyboard['summary'],
             'template' => $video->template->value,
             'format' => $video->format->value,
+            'animationStyle' => $video->animation_style->value,
             'slides' => $manifestSlides,
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 

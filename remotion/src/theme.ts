@@ -12,6 +12,10 @@ export type Theme = {
   ruleLineColor: string;
   frame: string;
   formulaPanel: string;
+  /** Three colors the animated gradient title scene cycles through. */
+  titleGradientColors: [string, string, string];
+  /** Accent colors for the outro scene's celebratory dots. */
+  confettiColors: string[];
 };
 
 export const THEME: Record<VideoTemplate, Theme> = {
@@ -27,6 +31,8 @@ export const THEME: Record<VideoTemplate, Theme> = {
     ruleLineColor: "rgba(180, 83, 9, 0.14)",
     frame: "bg-white ring-1 ring-orange-200",
     formulaPanel: "bg-white/70 text-orange-800 ring-1 ring-orange-200",
+    titleGradientColors: ["#fb923c", "#f43f5e", "#f59e0b"],
+    confettiColors: ["#f59e0b", "#fb7185", "#fbbf24", "#f97316"],
   },
   standard_lecture: {
     background: "bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950",
@@ -40,5 +46,7 @@ export const THEME: Record<VideoTemplate, Theme> = {
     ruleLineColor: "rgba(148, 163, 184, 0.1)",
     frame: "bg-white/95 ring-1 ring-white/50",
     formulaPanel: "bg-white/5 text-indigo-200 ring-1 ring-white/10",
+    titleGradientColors: ["#4338ca", "#0e7490", "#4f46e5"],
+    confettiColors: ["#818cf8", "#38bdf8", "#a78bfa", "#22d3ee"],
   },
 };

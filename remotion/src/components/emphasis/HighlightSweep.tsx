@@ -1,18 +1,12 @@
 import { Easing, interpolate, useCurrentFrame } from "remotion";
-
-const SWEEP_DURATION_IN_FRAMES = 15;
-
-type MarkerHighlightProps = {
-  children: React.ReactNode;
-  startFrame: number;
-  color?: string;
-};
+import { EMPHASIS_DURATION_IN_FRAMES } from "../../animations";
+import type { EmphasisProps } from "./types";
 
 /**
  * Wraps text in a highlight marker that sweeps in from the left, synced to `startFrame`.
  * DOM/CSS only — a background layer's width is interpolated per-frame, no canvas involved.
  */
-export const MarkerHighlight: React.FC<MarkerHighlightProps> = ({
+export const HighlightSweep: React.FC<EmphasisProps> = ({
   children,
   startFrame,
   color = "rgba(251, 191, 36, 0.55)",
@@ -35,7 +29,7 @@ export const MarkerHighlight: React.FC<MarkerHighlightProps> = ({
           left: 0,
           width: `${interpolate(
             frame,
-            [startFrame, startFrame + SWEEP_DURATION_IN_FRAMES],
+            [startFrame, startFrame + EMPHASIS_DURATION_IN_FRAMES],
             [0, 100],
             {
               extrapolateLeft: "clamp",

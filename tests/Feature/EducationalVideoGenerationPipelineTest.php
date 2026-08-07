@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\EducationalVideo\QueueVideoGenerationAction;
 use App\Ai\Agents\StoryboardWriter;
+use App\Enums\AnimationStyle;
 use App\Enums\VideoStatus;
 use App\Models\EducationalVideo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,6 +83,7 @@ class EducationalVideoGenerationPipelineTest extends TestCase
 
         $video = EducationalVideo::factory()->create([
             'source_pdf_path' => 'educational-videos/pdfs/lesson.pdf',
+            'animation_style' => AnimationStyle::PopIn,
         ]);
 
         Storage::disk('local')->put($video->source_pdf_path, 'fake-pdf-bytes');
@@ -118,6 +120,7 @@ class EducationalVideoGenerationPipelineTest extends TestCase
 
         $manifest = json_decode(File::get("{$this->remotionPath}/public/generated/{$video->id}/manifest.json"), true);
         $this->assertSame('images/slide-0.png', $manifest['slides'][0]['imageFile']);
+        $this->assertSame('pop_in', $manifest['animationStyle']);
 
         Process::assertRan(fn ($process) => str_contains($process->command[0] ?? '', 'npx'));
     }

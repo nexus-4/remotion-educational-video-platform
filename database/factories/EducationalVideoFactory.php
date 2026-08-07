@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\AnimationStyle;
 use App\Enums\IllustrationStyle;
 use App\Enums\VideoFormat;
 use App\Enums\VideoStatus;
@@ -29,6 +30,7 @@ class EducationalVideoFactory extends Factory
             'template' => fake()->randomElement(VideoTemplate::cases()),
             'format' => fake()->randomElement(VideoFormat::cases()),
             'illustration_style' => fake()->randomElement(IllustrationStyle::cases()),
+            'animation_style' => fake()->randomElement(AnimationStyle::cases()),
             'status' => VideoStatus::Pending,
         ];
     }

@@ -1,5 +1,5 @@
 import { AbsoluteFill, staticFile, useCurrentFrame } from "remotion";
-import type { Slide as SlideData } from "../../types";
+import type { AnimationStyleId, Slide as SlideData } from "../../types";
 import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
 import {
@@ -17,7 +17,8 @@ export const ContentSplitLayout: React.FC<{
   videoId: string;
   durationInFrames: number;
   mirrored: boolean;
-}> = ({ slide, theme, videoId, durationInFrames, mirrored }) => {
+  animationStyle: AnimationStyleId;
+}> = ({ slide, theme, videoId, durationInFrames, mirrored, animationStyle }) => {
   const frame = useCurrentFrame();
 
   const textPanel = (
@@ -41,7 +42,11 @@ export const ContentSplitLayout: React.FC<{
       ) : null}
 
       {slide.highlightTerms && slide.highlightTerms.length > 0 ? (
-        <HighlightChips terms={slide.highlightTerms} theme={theme} />
+        <HighlightChips
+          terms={slide.highlightTerms}
+          theme={theme}
+          animationStyle={animationStyle}
+        />
       ) : null}
     </div>
   );

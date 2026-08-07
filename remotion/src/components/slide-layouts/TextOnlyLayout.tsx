@@ -1,5 +1,5 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
-import type { Slide as SlideData } from "../../types";
+import type { AnimationStyleId, Slide as SlideData } from "../../types";
 import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
 import {
@@ -11,10 +11,11 @@ import {
 } from "../slide-parts";
 
 /** Full-bleed text-only treatment, used whenever a slide has no illustration. */
-export const TextOnlyLayout: React.FC<{ slide: SlideData; theme: Theme }> = ({
-  slide,
-  theme,
-}) => {
+export const TextOnlyLayout: React.FC<{
+  slide: SlideData;
+  theme: Theme;
+  animationStyle: AnimationStyleId;
+}> = ({ slide, theme, animationStyle }) => {
   const frame = useCurrentFrame();
 
   return (
@@ -41,7 +42,11 @@ export const TextOnlyLayout: React.FC<{ slide: SlideData; theme: Theme }> = ({
         ) : null}
 
         {slide.highlightTerms && slide.highlightTerms.length > 0 ? (
-          <HighlightChips terms={slide.highlightTerms} theme={theme} />
+          <HighlightChips
+            terms={slide.highlightTerms}
+            theme={theme}
+            animationStyle={animationStyle}
+          />
         ) : null}
       </div>
     </AbsoluteFill>

@@ -28,6 +28,7 @@ export const MainSequence: React.FC<EducationalVideoProps> = ({
               videoId={videoId}
               durationInFrames={slideDurationsInFrames[index]}
               index={index}
+              animationStyle={manifest.animationStyle}
             />
             <Audio
               src={staticFile(`generated/${videoId}/${slide.audioFile}`)}
