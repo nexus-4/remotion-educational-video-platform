@@ -3,13 +3,17 @@ import type { Slide as SlideData } from "../../types";
 import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
 import {
+  FittedHeading,
   FramedFigure,
-  HighlightChips,
   SlideBadge,
   SlideBullets,
 } from "../slide-parts";
 
-/** Centered "figure with caption" treatment reserved for worked examples. */
+/**
+ * Centered "figure with caption" treatment reserved for worked examples. Deliberately
+ * skips highlight-term chips (unlike the other layouts) — figure + heading + bullets
+ * already fill this layout's vertical budget on their own.
+ */
 export const ExampleSpotlightLayout: React.FC<{
   slide: SlideData;
   theme: Theme;
@@ -20,13 +24,13 @@ export const ExampleSpotlightLayout: React.FC<{
 
   return (
     <AbsoluteFill
-      className={`flex flex-col items-center justify-center gap-8 px-24 py-16 ${theme.background}`}
+      className={`flex flex-col items-center justify-center gap-6 overflow-hidden px-24 py-16 ${theme.background}`}
     >
       <div style={fadeSlideUp(frame, 0, 24)}>
         <SlideBadge type="example" theme={theme} />
       </div>
 
-      <div className="h-[50%] w-full max-w-5xl">
+      <div className="h-[34%] w-full max-w-5xl">
         <FramedFigure
           src={staticFile(`generated/${videoId}/${slide.imageFile}`)}
           durationInFrames={durationInFrames}
@@ -35,22 +39,20 @@ export const ExampleSpotlightLayout: React.FC<{
         />
       </div>
 
-      <h1
-        style={fadeSlideUp(frame, 4)}
-        className={`max-w-4xl text-center text-[64px] leading-tight font-extrabold ${theme.heading}`}
-      >
-        {slide.heading}
-      </h1>
+      <FittedHeading
+        text={slide.heading}
+        maxFontSize={56}
+        maxBoxWidth={896}
+        style={{ ...fadeSlideUp(frame, 4), textAlign: "center" }}
+        className={theme.heading}
+      />
 
       {slide.bullets && slide.bullets.length > 0 ? (
-        <SlideBullets bullets={slide.bullets} theme={theme} align="center" />
-      ) : null}
-
-      {slide.highlightTerms && slide.highlightTerms.length > 0 ? (
-        <HighlightChips
-          terms={slide.highlightTerms}
+        <SlideBullets
+          bullets={slide.bullets}
           theme={theme}
           align="center"
+          max={3}
         />
       ) : null}
     </AbsoluteFill>

@@ -24,6 +24,7 @@ type PageProps = {
     voices: Option[];
     templates: Option[];
     formats: Option[];
+    illustrationStyles: Option[];
 };
 
 function EnumSelect({
@@ -69,10 +70,14 @@ export default function CreateEducationalVideo({
     voices,
     templates,
     formats,
+    illustrationStyles,
 }: PageProps) {
     const [voice, setVoice] = useState(voices[0]?.value ?? '');
     const [template, setTemplate] = useState(templates[0]?.value ?? '');
     const [format, setFormat] = useState(formats[0]?.value ?? '');
+    const [illustrationStyle, setIllustrationStyle] = useState(
+        illustrationStyles[0]?.value ?? '',
+    );
 
     return (
         <>
@@ -139,6 +144,15 @@ export default function CreateEducationalVideo({
                                 value={format}
                                 onChange={setFormat}
                                 error={errors.format}
+                            />
+
+                            <EnumSelect
+                                id="illustration_style"
+                                label="Illustration style"
+                                options={illustrationStyles}
+                                value={illustrationStyle}
+                                onChange={setIllustrationStyle}
+                                error={errors.illustration_style}
                             />
 
                             <div className="flex items-center gap-4">

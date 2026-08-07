@@ -4,6 +4,7 @@ import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
 import {
   AcademicTexture,
+  FittedHeading,
   HighlightChips,
   SlideBadge,
   SlideBullets,
@@ -18,7 +19,7 @@ export const TextOnlyLayout: React.FC<{ slide: SlideData; theme: Theme }> = ({
 
   return (
     <AbsoluteFill
-      className={`flex flex-col justify-center px-28 ${theme.background}`}
+      className={`flex flex-col justify-center overflow-hidden px-28 ${theme.background}`}
     >
       <AcademicTexture lineColor={theme.ruleLineColor} />
 
@@ -27,12 +28,13 @@ export const TextOnlyLayout: React.FC<{ slide: SlideData; theme: Theme }> = ({
           <SlideBadge type={slide.type} theme={theme} />
         </div>
 
-        <h1
+        <FittedHeading
+          text={slide.heading}
+          maxFontSize={100}
+          maxBoxWidth={1024}
           style={fadeSlideUp(frame, 4)}
-          className={`mt-8 text-[100px] leading-tight font-extrabold ${theme.heading}`}
-        >
-          {slide.heading}
-        </h1>
+          className={`mt-8 ${theme.heading}`}
+        />
 
         {slide.bullets && slide.bullets.length > 0 ? (
           <SlideBullets bullets={slide.bullets} theme={theme} />

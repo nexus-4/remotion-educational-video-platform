@@ -1,6 +1,7 @@
 import { Audio } from "@remotion/media";
 import { AbsoluteFill, Series, staticFile } from "remotion";
 import { Slide } from "./components/Slide";
+import { fontFamily } from "./font";
 import type { EducationalVideoProps } from "./types";
 
 export const MainSequence: React.FC<EducationalVideoProps> = ({
@@ -13,7 +14,7 @@ export const MainSequence: React.FC<EducationalVideoProps> = ({
   }
 
   return (
-    <AbsoluteFill className="bg-white">
+    <AbsoluteFill className="bg-white" style={{ fontFamily }}>
       <Series>
         {manifest.slides.map((slide, index) => (
           <Series.Sequence

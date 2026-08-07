@@ -5,6 +5,9 @@ import {
 } from "../../animations";
 import { MarkerHighlight } from "../MarkerHighlight";
 
+/** More terms than this reads as clutter and risks wrapping past the slide's height. */
+const MAX_TERMS = 4;
+
 export const HighlightChips: React.FC<{
   terms: string[];
   theme: Theme;
@@ -13,7 +16,7 @@ export const HighlightChips: React.FC<{
   <div
     className={`mt-10 flex flex-wrap gap-4 ${align === "center" ? "justify-center" : ""}`}
   >
-    {terms.map((term, index) => (
+    {terms.slice(0, MAX_TERMS).map((term, index) => (
       <MarkerHighlight
         key={term}
         startFrame={

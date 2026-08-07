@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\IllustrationStyle;
 use App\Enums\VideoFormat;
 use App\Enums\VideoStatus;
 use App\Enums\VideoTemplate;
@@ -47,13 +48,14 @@ class EducationalVideoControllerTest extends TestCase
                 ->has('voices', count(VoiceType::cases()))
                 ->has('templates', count(VideoTemplate::cases()))
                 ->has('formats', count(VideoFormat::cases()))
+                ->has('illustrationStyles', count(IllustrationStyle::cases()))
             );
     }
 
-    public function test_store_requires_pdf_voice_template_and_format()
+    public function test_store_requires_pdf_voice_template_format_and_illustration_style()
     {
         $this->post(route('educational-videos.store'), [])
-            ->assertSessionHasErrors(['pdf', 'voice', 'template', 'format']);
+            ->assertSessionHasErrors(['pdf', 'voice', 'template', 'format', 'illustration_style']);
     }
 
     public function test_store_creates_a_video_and_dispatches_the_generation_pipeline()
@@ -67,6 +69,7 @@ class EducationalVideoControllerTest extends TestCase
             'voice' => VoiceType::Nova->value,
             'template' => VideoTemplate::StandardLecture->value,
             'format' => VideoFormat::Short->value,
+            'illustration_style' => IllustrationStyle::FlatIllustration->value,
         ]);
 
         $video = EducationalVideo::first();

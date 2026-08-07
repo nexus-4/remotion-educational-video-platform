@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\EducationalVideo\QueueVideoGenerationAction;
+use App\Enums\IllustrationStyle;
 use App\Enums\VideoFormat;
 use App\Enums\VideoTemplate;
 use App\Enums\VoiceType;
@@ -43,6 +44,7 @@ class EducationalVideoController extends Controller
             'voices' => $this->options(VoiceType::cases()),
             'templates' => $this->options(VideoTemplate::cases()),
             'formats' => $this->options(VideoFormat::cases()),
+            'illustrationStyles' => $this->options(IllustrationStyle::cases()),
         ]);
     }
 
@@ -61,6 +63,7 @@ class EducationalVideoController extends Controller
             'voice' => $data['voice'],
             'template' => $data['template'],
             'format' => $data['format'],
+            'illustration_style' => $data['illustration_style'],
         ]);
 
         (new QueueVideoGenerationAction)->handle($video);
@@ -91,13 +94,13 @@ class EducationalVideoController extends Controller
     /**
      * Map backed enum cases to value/label options for the frontend.
      *
-     * @param  array<int, VideoFormat|VideoTemplate|VoiceType>  $cases
+     * @param  array<int, IllustrationStyle|VideoFormat|VideoTemplate|VoiceType>  $cases
      * @return array<int, array{value: string, label: string}>
      */
     private function options(array $cases): array
     {
         return array_map(
-            fn (VideoFormat|VideoTemplate|VoiceType $case): array => ['value' => $case->value, 'label' => $case->label()],
+            fn (IllustrationStyle|VideoFormat|VideoTemplate|VoiceType $case): array => ['value' => $case->value, 'label' => $case->label()],
             $cases,
         );
     }

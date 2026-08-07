@@ -3,6 +3,7 @@ import type { Slide as SlideData } from "../../types";
 import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
 import {
+  FittedHeading,
   FramedFigure,
   HighlightChips,
   SlideBadge,
@@ -21,18 +22,19 @@ export const ContentSplitLayout: React.FC<{
 
   const textPanel = (
     <div
-      className={`flex h-full w-1/2 flex-col justify-center px-20 ${theme.panelBackground}`}
+      className={`flex h-full w-1/2 flex-col justify-center overflow-hidden px-20 ${theme.panelBackground}`}
     >
       <div style={fadeSlideUp(frame, 0, 24)}>
         <SlideBadge type={slide.type} theme={theme} />
       </div>
 
-      <h1
+      <FittedHeading
+        text={slide.heading}
+        maxFontSize={68}
+        maxBoxWidth={800}
         style={fadeSlideUp(frame, 4)}
-        className={`mt-6 text-[68px] leading-tight font-extrabold ${theme.heading}`}
-      >
-        {slide.heading}
-      </h1>
+        className={`mt-6 ${theme.heading}`}
+      />
 
       {slide.bullets && slide.bullets.length > 0 ? (
         <SlideBullets bullets={slide.bullets} theme={theme} />

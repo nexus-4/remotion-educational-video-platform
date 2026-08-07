@@ -1,8 +1,12 @@
+import { fitTextOnNLines } from "@remotion/layout-utils";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import type { Slide as SlideData } from "../../types";
 import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
-import { AcademicTexture, SlideBadge } from "../slide-parts";
+import { fontFamily } from "../../font";
+import { AcademicTexture, FittedHeading, SlideBadge } from "../slide-parts";
+
+const FORMULA_MAX_BOX_WIDTH = 1400;
 
 /** Full-bleed themed background with the formula in a glass panel. */
 export const FormulaLayout: React.FC<{ slide: SlideData; theme: Theme }> = ({
@@ -11,9 +15,20 @@ export const FormulaLayout: React.FC<{ slide: SlideData; theme: Theme }> = ({
 }) => {
   const frame = useCurrentFrame();
 
+  const formulaFontSize = slide.formula
+    ? fitTextOnNLines({
+        text: slide.formula,
+        maxLines: 2,
+        maxBoxWidth: FORMULA_MAX_BOX_WIDTH,
+        fontFamily,
+        fontWeight: 700,
+        maxFontSize: 76,
+      }).fontSize
+    : 76;
+
   return (
     <AbsoluteFill
-      className={`flex flex-col items-center justify-center gap-12 ${theme.background}`}
+      className={`flex flex-col items-center justify-center gap-12 overflow-hidden ${theme.background}`}
     >
       <AcademicTexture lineColor={theme.ruleLineColor} />
 
@@ -22,17 +37,19 @@ export const FormulaLayout: React.FC<{ slide: SlideData; theme: Theme }> = ({
         className="relative z-10 flex flex-col items-center gap-8"
       >
         <SlideBadge type="formula" theme={theme} />
-        <h1
-          className={`max-w-4xl text-center text-[80px] leading-tight font-extrabold ${theme.heading}`}
-        >
-          {slide.heading}
-        </h1>
+        <FittedHeading
+          text={slide.heading}
+          maxFontSize={80}
+          maxBoxWidth={896}
+          style={{ textAlign: "center" }}
+          className={theme.heading}
+        />
       </div>
 
       {slide.formula ? (
         <div
-          style={fadeSlideUp(frame, 10, 24)}
-          className={`relative z-10 rounded-3xl px-16 py-12 text-center text-[76px] font-bold ${theme.formulaPanel}`}
+          style={{ ...fadeSlideUp(frame, 10, 24), fontSize: formulaFontSize }}
+          className={`relative z-10 rounded-3xl px-16 py-12 text-center font-bold ${theme.formulaPanel}`}
         >
           {slide.formula}
         </div>

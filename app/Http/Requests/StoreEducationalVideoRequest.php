@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\IllustrationStyle;
 use App\Enums\VideoFormat;
 use App\Enums\VideoTemplate;
 use App\Enums\VoiceType;
@@ -24,6 +25,7 @@ class StoreEducationalVideoRequest extends FormRequest
             'voice' => ['required', Rule::enum(VoiceType::class)],
             'template' => ['required', Rule::enum(VideoTemplate::class)],
             'format' => ['required', Rule::enum(VideoFormat::class)],
+            'illustration_style' => ['required', Rule::enum(IllustrationStyle::class)],
         ];
     }
 }

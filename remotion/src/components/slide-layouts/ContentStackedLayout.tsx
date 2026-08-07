@@ -3,6 +3,7 @@ import type { Slide as SlideData } from "../../types";
 import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
 import {
+  FittedHeading,
   FramedFigure,
   HighlightChips,
   SlideBadge,
@@ -20,7 +21,7 @@ export const ContentStackedLayout: React.FC<{
 
   return (
     <AbsoluteFill className={`flex flex-col px-24 py-16 ${theme.background}`}>
-      <div className="h-[48%] w-full">
+      <div className="h-[42%] w-full">
         <FramedFigure
           src={staticFile(`generated/${videoId}/${slide.imageFile}`)}
           durationInFrames={durationInFrames}
@@ -29,17 +30,18 @@ export const ContentStackedLayout: React.FC<{
         />
       </div>
 
-      <div className="mt-10 flex-1">
+      <div className="mt-8 flex-1 overflow-hidden">
         <div style={fadeSlideUp(frame, 0, 24)}>
           <SlideBadge type={slide.type} theme={theme} />
         </div>
 
-        <h1
+        <FittedHeading
+          text={slide.heading}
+          maxFontSize={72}
+          maxBoxWidth={1728}
           style={fadeSlideUp(frame, 4)}
-          className={`mt-6 text-[72px] leading-tight font-extrabold ${theme.heading}`}
-        >
-          {slide.heading}
-        </h1>
+          className={`mt-6 ${theme.heading}`}
+        />
 
         {slide.bullets && slide.bullets.length > 0 ? (
           <SlideBullets bullets={slide.bullets} theme={theme} />

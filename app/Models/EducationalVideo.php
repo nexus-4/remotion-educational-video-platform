@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\IllustrationStyle;
 use App\Enums\VideoFormat;
 use App\Enums\VideoStatus;
 use App\Enums\VideoTemplate;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property VoiceType $voice
  * @property VideoTemplate $template
  * @property VideoFormat $format
+ * @property IllustrationStyle $illustration_style
  * @property VideoStatus $status
  * @property string|null $progress
  * @property array<string, mixed>|null $storyboard
@@ -28,7 +30,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['title', 'source_pdf_path', 'voice', 'template', 'format', 'status', 'progress', 'storyboard', 'audio_manifest', 'video_path', 'error'])]
+#[Fillable(['title', 'source_pdf_path', 'voice', 'template', 'format', 'illustration_style', 'status', 'progress', 'storyboard', 'audio_manifest', 'video_path', 'error'])]
 class EducationalVideo extends Model
 {
     /** @use HasFactory<EducationalVideoFactory> */
@@ -43,6 +45,7 @@ class EducationalVideo extends Model
             'voice' => VoiceType::class,
             'template' => VideoTemplate::class,
             'format' => VideoFormat::class,
+            'illustration_style' => IllustrationStyle::class,
             'status' => VideoStatus::class,
             'storyboard' => 'array',
             'audio_manifest' => 'array',

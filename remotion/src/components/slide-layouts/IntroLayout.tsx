@@ -2,7 +2,7 @@ import { AbsoluteFill, staticFile, useCurrentFrame } from "remotion";
 import type { Slide as SlideData } from "../../types";
 import type { Theme } from "../../theme";
 import { fadeSlideUp } from "../../animations";
-import { AcademicTexture, CoverImage } from "../slide-parts";
+import { AcademicTexture, CoverImage, FittedHeading } from "../slide-parts";
 
 /** Full-bleed hero: cover image (or ruled-paper texture) behind a huge title. */
 export const IntroLayout: React.FC<{
@@ -40,14 +40,14 @@ export const IntroLayout: React.FC<{
           Introduction
         </span>
 
-        <h1
+        <FittedHeading
+          text={slide.heading}
+          maxFontSize={130}
+          maxBoxWidth={1152}
+          maxLines={3}
           style={fadeSlideUp(frame, 4)}
-          className={`mt-8 max-w-6xl text-[130px] leading-[1.05] font-extrabold ${
-            hasImage ? "text-white" : theme.heading
-          }`}
-        >
-          {slide.heading}
-        </h1>
+          className={`mt-8 ${hasImage ? "text-white" : theme.heading}`}
+        />
       </AbsoluteFill>
     </AbsoluteFill>
   );

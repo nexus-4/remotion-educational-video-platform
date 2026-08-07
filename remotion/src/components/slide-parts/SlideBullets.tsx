@@ -2,16 +2,21 @@ import { interpolate, useCurrentFrame } from "remotion";
 import type { Theme } from "../../theme";
 import { ENTRANCE_DURATION_IN_FRAMES } from "../../animations";
 
+/** More than this and a bullet list risks overflowing its slide's fixed height. */
+const MAX_BULLETS = 4;
+
 export const SlideBullets: React.FC<{
   bullets: string[];
   theme: Theme;
   align?: "left" | "center";
-}> = ({ bullets, theme, align = "left" }) => {
+  max?: number;
+}> = ({ bullets, theme, align = "left", max = MAX_BULLETS }) => {
   const frame = useCurrentFrame();
+  const visibleBullets = bullets.slice(0, max);
 
   return (
     <ul className={`mt-8 space-y-4 ${align === "center" ? "text-center" : ""}`}>
-      {bullets.map((bullet, index) => {
+      {visibleBullets.map((bullet, index) => {
         const startFrame = ENTRANCE_DURATION_IN_FRAMES + index * 6;
 
         return (

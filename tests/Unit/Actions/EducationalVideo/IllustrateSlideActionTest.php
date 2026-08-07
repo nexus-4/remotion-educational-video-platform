@@ -3,6 +3,7 @@
 namespace Tests\Unit\Actions\EducationalVideo;
 
 use App\Actions\EducationalVideo\IllustrateSlideAction;
+use App\Enums\IllustrationStyle;
 use App\Enums\VideoTemplate;
 use App\Models\EducationalVideo;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +18,11 @@ class IllustrateSlideActionTest extends TestCase
         Storage::fake('local');
         Image::fake();
 
-        $video = EducationalVideo::factory()->make(['id' => 1, 'template' => VideoTemplate::StandardLecture]);
+        $video = EducationalVideo::factory()->make([
+            'id' => 1,
+            'template' => VideoTemplate::StandardLecture,
+            'illustration_style' => IllustrationStyle::AcademicDiagram,
+        ]);
 
         $path = (new IllustrateSlideAction)->handle($video, 'A wire carrying an electric current.', 0);
 
@@ -28,12 +33,32 @@ class IllustrateSlideActionTest extends TestCase
             && $prompt->contains('academic textbook diagram'));
     }
 
+    public function test_it_uses_the_style_prompt_for_the_selected_illustration_style()
+    {
+        Storage::fake('local');
+        Image::fake();
+
+        $video = EducationalVideo::factory()->make([
+            'id' => 1,
+            'template' => VideoTemplate::StandardLecture,
+            'illustration_style' => IllustrationStyle::HandDrawnSketch,
+        ]);
+
+        (new IllustrateSlideAction)->handle($video, 'A wire carrying an electric current.', 0);
+
+        Image::assertGenerated(fn ($prompt) => $prompt->contains('hand-drawn pencil or ink sketch'));
+    }
+
     public function test_it_returns_null_instead_of_throwing_when_generation_fails()
     {
         Storage::fake('local');
         Image::fake(fn () => throw new RuntimeException('image provider unavailable'));
 
-        $video = EducationalVideo::factory()->make(['id' => 1, 'template' => VideoTemplate::NotebookLm]);
+        $video = EducationalVideo::factory()->make([
+            'id' => 1,
+            'template' => VideoTemplate::NotebookLm,
+            'illustration_style' => IllustrationStyle::FlatIllustration,
+        ]);
 
         $path = (new IllustrateSlideAction)->handle($video, 'A plant absorbing sunlight.', 0);
 
