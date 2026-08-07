@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'remotion' => [
+        'path' => env('REMOTION_PROJECT_PATH', base_path('remotion')),
+        'render_timeout' => env('REMOTION_RENDER_TIMEOUT', 900),
+    ],
+
 ];
