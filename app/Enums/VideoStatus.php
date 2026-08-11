@@ -6,6 +6,7 @@ enum VideoStatus: string
 {
     case Pending = 'pending';
     case GeneratingStoryboard = 'generating_storyboard';
+    case AwaitingReview = 'awaiting_review';
     case GeneratingAudio = 'generating_audio';
     case Rendering = 'rendering';
     case Completed = 'completed';
@@ -16,6 +17,7 @@ enum VideoStatus: string
         return match ($this) {
             self::Pending => 'Queued',
             self::GeneratingStoryboard => 'Writing storyboard',
+            self::AwaitingReview => 'Ready for review',
             self::GeneratingAudio => 'Recording narration',
             self::Rendering => 'Rendering video',
             self::Completed => 'Completed',

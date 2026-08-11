@@ -1,28 +1,30 @@
-import { Head, usePoll } from '@inertiajs/react';
+import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import {
     AlertCircle,
     Clapperboard,
+    ClipboardCheck,
+    ClipboardList,
     Download,
     Mic,
     PenLine,
+    RotateCcw,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect } from 'react';
-import { buttonVariants } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import EducationalVideoController from '@/actions/App/Http/Controllers/EducationalVideoController';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import type { StoryboardSlide } from './components/storyboard-review';
+import { StoryboardReview } from './components/storyboard-review';
 
 type EducationalVideoStatus =
     | 'pending'
     | 'generating_storyboard'
+    | 'awaiting_review'
     | 'generating_audio'
     | 'rendering'
     | 'completed'
     | 'failed';
-
-type SlideOutlineItem = {
-    type: string;
-    heading: string;
-};
 
 type PageProps = {
     video: {
@@ -33,7 +35,9 @@ type PageProps = {
         progress: string | null;
         error: string | null;
         videoUrl: string | null;
-        slides: SlideOutlineItem[];
+        hasWorksheet: boolean;
+        scenePreviews: Record<string, string | null>;
+        slides: StoryboardSlide[];
     };
 };
 
@@ -46,6 +50,11 @@ const STAGES: {
         key: 'generating_storyboard',
         label: 'Writing storyboard',
         icon: PenLine,
+    },
+    {
+        key: 'awaiting_review',
+        label: 'Ready for your review',
+        icon: ClipboardCheck,
     },
     { key: 'generating_audio', label: 'Narrating & illustrating', icon: Mic },
     { key: 'rendering', label: 'Rendering video', icon: Clapperboard },
@@ -95,18 +104,39 @@ function StageProgress({ status }: { status: EducationalVideoStatus }) {
 }
 
 export default function ShowEducationalVideo({ video }: PageProps) {
+    const { errors } = usePage<{ errors: Record<string, string> }>().props;
+    const [isGeneratingWorksheet, setIsGeneratingWorksheet] = useState(false);
+
     const isTerminal =
         video.status === 'completed' || video.status === 'failed';
+    const isAwaitingReview = video.status === 'awaiting_review';
 
-    const { stop } = usePoll(3000, {}, { autoStart: !isTerminal });
+    const { stop } = usePoll(
+        3000,
+        {},
+        {
+            autoStart: !isTerminal && !isAwaitingReview,
+            // `keepAlive` is required here — Inertia pauses polling by default while the tab
+            // is in the background, which would otherwise leave this page stuck showing a
+            // stale in-progress state until the user manually reloads.
+            keepAlive: true,
+            // `mode: 'cancel'` is required too — Inertia's default `'overlap'` mode lets
+            // multiple poll responses be in flight at once with no guarantee they get
+            // *applied* in the order they were *sent*. Over a multi-minute render, an
+            // earlier "still rendering" response can resolve after a later "completed"
+            // one and silently overwrite it. `cancel` guarantees only the latest response
+            // is ever applied.
+            mode: 'cancel',
+        },
+    );
 
     useEffect(() => {
-        if (isTerminal) {
+        if (isTerminal || isAwaitingReview) {
             stop();
         }
-    }, [isTerminal, stop]);
+    }, [isTerminal, isAwaitingReview, stop]);
 
-    const hasOutline = video.slides.length > 0;
+    const hasOutline = video.slides.length > 0 && !isAwaitingReview;
 
     return (
         <>
@@ -124,14 +154,62 @@ export default function ShowEducationalVideo({ video }: PageProps) {
                     </div>
 
                     {video.status === 'completed' && video.videoUrl && (
-                        <a
-                            href={video.videoUrl}
-                            download
-                            className={buttonVariants({ variant: 'outline' })}
-                        >
-                            <Download />
-                            Download
-                        </a>
+                        <div className="flex items-center gap-2">
+                            {video.hasWorksheet ? (
+                                <a
+                                    href={
+                                        EducationalVideoController.showWorksheet(
+                                            video.id,
+                                        ).url
+                                    }
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={buttonVariants({
+                                        variant: 'outline',
+                                    })}
+                                >
+                                    <ClipboardList />
+                                    View worksheet
+                                </a>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={isGeneratingWorksheet}
+                                    onClick={() => {
+                                        setIsGeneratingWorksheet(true);
+                                        router.post(
+                                            EducationalVideoController.generateWorksheet(
+                                                video.id,
+                                            ).url,
+                                            {},
+                                            {
+                                                onFinish: () =>
+                                                    setIsGeneratingWorksheet(
+                                                        false,
+                                                    ),
+                                            },
+                                        );
+                                    }}
+                                >
+                                    <ClipboardList />
+                                    {isGeneratingWorksheet
+                                        ? 'Generating…'
+                                        : 'Generate worksheet'}
+                                </Button>
+                            )}
+
+                            <a
+                                href={video.videoUrl}
+                                download
+                                className={buttonVariants({
+                                    variant: 'outline',
+                                })}
+                            >
+                                <Download />
+                                Download
+                            </a>
+                        </div>
                     )}
                 </div>
 
@@ -145,7 +223,23 @@ export default function ShowEducationalVideo({ video }: PageProps) {
                         {video.status === 'failed' && (
                             <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
                                 <AlertCircle className="size-5 shrink-0" />
-                                <p>{video.error}</p>
+                                <p className="flex-1">{video.error}</p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="shrink-0"
+                                    onClick={() =>
+                                        router.post(
+                                            EducationalVideoController.retry(
+                                                video.id,
+                                            ).url,
+                                        )
+                                    }
+                                >
+                                    <RotateCcw className="size-4" />
+                                    Retry
+                                </Button>
                             </div>
                         )}
 
@@ -155,6 +249,19 @@ export default function ShowEducationalVideo({ video }: PageProps) {
                                     controls
                                     className="w-full rounded-2xl"
                                     src={video.videoUrl}
+                                />
+                            </div>
+                        ) : isAwaitingReview ? (
+                            <div className="rounded-3xl border border-violet-100 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+                                <StoryboardReview
+                                    slides={video.slides}
+                                    confirmUrl={
+                                        EducationalVideoController.confirmStoryboard(
+                                            video.id,
+                                        ).url
+                                    }
+                                    errors={errors}
+                                    scenePreviews={video.scenePreviews}
                                 />
                             </div>
                         ) : video.status !== 'failed' ? (

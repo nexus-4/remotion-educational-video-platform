@@ -23,16 +23,19 @@ use Illuminate\Support\Carbon;
  * @property VideoFormat $format
  * @property IllustrationStyle $illustration_style
  * @property AnimationStyle $animation_style
+ * @property string|null $content_focus
  * @property VideoStatus $status
  * @property string|null $progress
  * @property array<string, mixed>|null $storyboard
  * @property array<int, array<string, mixed>>|null $audio_manifest
+ * @property array<int, array<string, mixed>>|null $worksheet
  * @property string|null $video_path
+ * @property string|null $thumbnail_path
  * @property string|null $error
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['title', 'source_pdf_path', 'voice', 'template', 'format', 'illustration_style', 'animation_style', 'status', 'progress', 'storyboard', 'audio_manifest', 'video_path', 'error'])]
+#[Fillable(['title', 'source_pdf_path', 'voice', 'template', 'format', 'illustration_style', 'animation_style', 'content_focus', 'status', 'progress', 'storyboard', 'audio_manifest', 'worksheet', 'video_path', 'thumbnail_path', 'error'])]
 class EducationalVideo extends Model
 {
     /** @use HasFactory<EducationalVideoFactory> */
@@ -52,6 +55,7 @@ class EducationalVideo extends Model
             'status' => VideoStatus::class,
             'storyboard' => 'array',
             'audio_manifest' => 'array',
+            'worksheet' => 'array',
         ];
     }
 }

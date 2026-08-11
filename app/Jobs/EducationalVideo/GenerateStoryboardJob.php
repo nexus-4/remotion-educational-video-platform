@@ -34,6 +34,10 @@ class GenerateStoryboardJob implements ShouldQueue
 
         $storyboard = $action->handle($this->video);
 
-        $this->video->update(['storyboard' => $storyboard]);
+        $this->video->update([
+            'storyboard' => $storyboard,
+            'status' => VideoStatus::AwaitingReview,
+            'progress' => null,
+        ]);
     }
 }

@@ -20,6 +20,7 @@ class IllustrateSlideAction
         $palette = match ($video->template) {
             VideoTemplate::NotebookLm => 'Muted, warm palette of cream, amber, and terracotta tones.',
             VideoTemplate::StandardLecture => 'Muted, cool palette of navy, slate, and soft indigo tones.',
+            VideoTemplate::CleanMinimal => 'Soft, airy palette of white, pastel violet, and pastel pink tones.',
         };
 
         $prompt = "{$imagePrompt} {$palette} ".$video->illustration_style->stylePrompt();

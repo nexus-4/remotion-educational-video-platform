@@ -6,6 +6,10 @@ const SLIDE_BADGE_LABEL: Record<SlideData["type"], string> = {
   content: "Ideia Chave",
   formula: "Formula",
   example: "Exemplo",
+  comparison: "Comparação",
+  timeline: "Linha do Tempo",
+  big_stat: "Destaque",
+  definition: "Definição",
   outro: "Fim",
 };
 

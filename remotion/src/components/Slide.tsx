@@ -5,14 +5,18 @@ import type {
 } from "../types";
 import { THEME } from "../theme";
 import {
+  BigStatLayout,
+  ComparisonLayout,
   ContentSplitLayout,
   ContentStackedLayout,
+  DefinitionLayout,
   ExampleSpotlightLayout,
   FormulaLayout,
   GradientTitleLayout,
   IntroLayout,
   OutroLayout,
   TextOnlyLayout,
+  TimelineLayout,
 } from "./slide-layouts";
 
 type SlideProps = {
@@ -27,7 +31,8 @@ type SlideProps = {
 /**
  * Picks which layout to render for a slide:
  * - `intro` always gets the full-bleed hero; `outro` always gets the celebratory closer.
- * - `formula` always gets the themed formula panel.
+ * - `formula`, `comparison`, `timeline`, `big_stat`, and `definition` each get their own
+ *   dedicated layout, regardless of illustration/bullets.
  * - a slide with no illustration AND no bullets is a short, punchy statement — it gets
  *   the minimalist gradient-title scene instead of the plain text layout.
  * - anything else without an illustration falls back to the full-bleed text-only layout.
@@ -64,6 +69,28 @@ export const Slide: React.FC<SlideProps> = ({
 
   if (slide.type === "formula") {
     return <FormulaLayout slide={slide} theme={theme} />;
+  }
+
+  if (slide.type === "comparison") {
+    return <ComparisonLayout slide={slide} theme={theme} />;
+  }
+
+  if (slide.type === "timeline") {
+    return <TimelineLayout slide={slide} theme={theme} />;
+  }
+
+  if (slide.type === "big_stat") {
+    return (
+      <BigStatLayout
+        slide={slide}
+        theme={theme}
+        durationInFrames={durationInFrames}
+      />
+    );
+  }
+
+  if (slide.type === "definition") {
+    return <DefinitionLayout slide={slide} theme={theme} />;
   }
 
   if (!hasImage && !hasBullets) {

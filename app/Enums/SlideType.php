@@ -8,6 +8,10 @@ enum SlideType: string
     case Content = 'content';
     case Formula = 'formula';
     case Example = 'example';
+    case Comparison = 'comparison';
+    case Timeline = 'timeline';
+    case BigStat = 'big_stat';
+    case Definition = 'definition';
     case Outro = 'outro';
 
     public function label(): string
@@ -17,6 +21,10 @@ enum SlideType: string
             self::Content => 'Content',
             self::Formula => 'Formula',
             self::Example => 'Example',
+            self::Comparison => 'Comparison',
+            self::Timeline => 'Timeline',
+            self::BigStat => 'Big Stat',
+            self::Definition => 'Definition',
             self::Outro => 'Ending',
         };
     }

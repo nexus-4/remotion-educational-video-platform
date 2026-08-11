@@ -6,6 +6,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { StyleSwatch } from './components/style-swatch';
 import { TemplatePreviewCard } from './components/template-preview-card';
@@ -158,6 +159,22 @@ export default function CreateEducationalVideo({
                                             />
                                             <InputError
                                                 message={errors.title}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="content_focus">
+                                                Anything specific this video
+                                                should focus on? (optional)
+                                            </Label>
+                                            <Textarea
+                                                id="content_focus"
+                                                name="content_focus"
+                                                placeholder="e.g. Focus on the causes, not just the timeline"
+                                                rows={2}
+                                            />
+                                            <InputError
+                                                message={errors.content_focus}
                                             />
                                         </div>
 

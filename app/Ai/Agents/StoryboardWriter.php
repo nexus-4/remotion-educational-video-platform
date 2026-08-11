@@ -18,6 +18,7 @@ class StoryboardWriter implements Agent, HasStructuredOutput
     public function __construct(
         public VideoTemplate $template,
         public VideoFormat $format,
+        public ?string $contentFocus = null,
     ) {}
 
     /**
@@ -28,7 +29,12 @@ class StoryboardWriter implements Agent, HasStructuredOutput
         $style = match ($this->template) {
             VideoTemplate::NotebookLm => 'a warm, conversational tone that talks the student through the source material like a friendly study companion, occasionally referencing "the document" as its source',
             VideoTemplate::StandardLecture => 'a clear, structured classroom-lecture tone, introducing each idea before explaining it',
+            VideoTemplate::CleanMinimal => 'a calm, plain-spoken tone that gets straight to the point with short, clear statements',
         };
+
+        $focus = $this->contentFocus === null
+            ? ''
+            : "\n\nThe student/teacher specifically wants this video to focus on: {$this->contentFocus}. Make sure the storyboard reflects that emphasis.";
 
         return <<<INSTRUCTIONS
             You are an instructional designer who turns source documents into short educational videos for
@@ -43,17 +49,31 @@ class StoryboardWriter implements Agent, HasStructuredOutput
             - The LAST slide must be of type "outro": warmly wraps up by recapping the single most important
               takeaway from the video in one sentence, then closes with a short, encouraging line for the student.
               Never end the video on a content, example, or formula slide.
-            - Every slide in between is "content", "example", or "formula", filling the rest of the slide count.
+            - Every slide in between is "content", "example", "formula", "comparison", "timeline", "big_stat",
+              or "definition", filling the rest of the slide count.
             Use "formula" slides only for mathematical or scientific formulas that appear in the document.
             Use "example" slides to walk through a worked example or a concrete, relatable scenario.
+            The "comparison", "timeline", "big_stat", and "definition" types are optional extras — use them
+            ONLY where they genuinely fit the source material, never as filler:
+            - "comparison": the document contrasts two things. Set "leftLabel"/"rightLabel" (short names for
+              each side) and "leftItems"/"rightItems" (1-4 short points each).
+            - "timeline": the document describes an ordered sequence or process. Set "steps" to 2-6 short,
+              ordered strings.
+            - "big_stat": the document contains one striking number or statistic worth making the whole
+              focus of a slide. Set "statValue" (the number, with unit/symbol if relevant) and "statLabel"
+              (a short caption explaining what it is).
+            - "definition": the document introduces an important vocabulary term. Set "term" and a one or
+              two sentence "definition" in plain language.
             For each slide, list 1-4 "highlightTerms" — the exact key words or phrases from that slide's
             narration that should be visually highlighted as they are spoken.
 
-            For every slide except "formula" and "outro" slides, write an "imagePrompt": a short, literal
-            description of the objects, process, or scene to depict (e.g. "a plant's roots absorbing water
-            from soil, cross-section view" or "the water cycle showing evaporation from the ocean and rain
-            falling on mountains"). Describe only the SUBJECT MATTER, not an art style — the rendering style
-            is applied separately. Leave "imagePrompt" null for "formula" and "outro" slides.
+            For every slide except "formula", "comparison", "timeline", "big_stat", "definition", and "outro"
+            slides, write an "imagePrompt": a short, literal description of the objects, process, or scene to
+            depict (e.g. "a plant's roots absorbing water from soil, cross-section view" or "the water cycle
+            showing evaporation from the ocean and rain falling on mountains"). Describe only the SUBJECT
+            MATTER, not an art style — the rendering style is applied separately. Leave "imagePrompt" null for
+            all of those types — they never display an illustration.
+            {$focus}
             INSTRUCTIONS;
     }
 
@@ -79,7 +99,7 @@ class StoryboardWriter implements Agent, HasStructuredOutput
                 ->items(
                     $schema->object([
                         'type' => $schema->string()
-                            ->enum(['intro', 'content', 'formula', 'example', 'outro'])
+                            ->enum(['intro', 'content', 'formula', 'example', 'comparison', 'timeline', 'big_stat', 'definition', 'outro'])
                             ->description('The kind of slide this is.')
                             ->required(),
                         'heading' => $schema->string()
@@ -100,7 +120,37 @@ class StoryboardWriter implements Agent, HasStructuredOutput
                             ->description('Key words from the narration to visually highlight as they are spoken.')
                             ->nullable(),
                         'imagePrompt' => $schema->string()
-                            ->description('A short, literal description of the subject matter to illustrate for this slide (no art-style words). Null for "formula" and "outro" slides.')
+                            ->description('A short, literal description of the subject matter to illustrate for this slide (no art-style words). Null for "formula", "comparison", "timeline", "big_stat", "definition", and "outro" slides.')
+                            ->nullable(),
+                        'leftLabel' => $schema->string()
+                            ->description('Short name for the left side, only set when type is "comparison".')
+                            ->nullable(),
+                        'leftItems' => $schema->array()
+                            ->items($schema->string())
+                            ->description('1-4 short points for the left side, only set when type is "comparison".')
+                            ->nullable(),
+                        'rightLabel' => $schema->string()
+                            ->description('Short name for the right side, only set when type is "comparison".')
+                            ->nullable(),
+                        'rightItems' => $schema->array()
+                            ->items($schema->string())
+                            ->description('1-4 short points for the right side, only set when type is "comparison".')
+                            ->nullable(),
+                        'steps' => $schema->array()
+                            ->items($schema->string())
+                            ->description('2-6 short, ordered steps, only set when type is "timeline".')
+                            ->nullable(),
+                        'statValue' => $schema->string()
+                            ->description('The standout number/statistic, with unit or symbol if relevant, only set when type is "big_stat".')
+                            ->nullable(),
+                        'statLabel' => $schema->string()
+                            ->description('A short caption explaining the statistic, only set when type is "big_stat".')
+                            ->nullable(),
+                        'term' => $schema->string()
+                            ->description('The vocabulary term being introduced, only set when type is "definition".')
+                            ->nullable(),
+                        'definition' => $schema->string()
+                            ->description('A one or two sentence, plain-language definition of "term", only set when type is "definition".')
                             ->nullable(),
                     ])->withoutAdditionalProperties()
                 )

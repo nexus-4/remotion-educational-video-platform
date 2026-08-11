@@ -23,6 +23,12 @@ const PREVIEW: Record<
         bar: 'bg-white/80',
         description: 'Clear, structured — a classic classroom lecture feel.',
     },
+    clean_minimal: {
+        frame: 'bg-gradient-to-br from-white via-slate-50 to-violet-50',
+        badge: 'bg-violet-100 text-violet-700',
+        bar: 'bg-slate-800/60',
+        description: 'Airy and minimal — plenty of whitespace, pastel accents.',
+    },
 };
 
 /** A small CSS-only mockup of what a video in this template actually looks like. */

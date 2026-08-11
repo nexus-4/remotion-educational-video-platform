@@ -1,11 +1,18 @@
 import { Head, Link } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2, Loader2, Plus } from 'lucide-react';
+import {
+    AlertCircle,
+    CheckCircle2,
+    ClipboardCheck,
+    Loader2,
+    Plus,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { create, show } from '@/routes/educational-videos';
 
 type EducationalVideoStatus =
     | 'pending'
     | 'generating_storyboard'
+    | 'awaiting_review'
     | 'generating_audio'
     | 'rendering'
     | 'completed'
@@ -17,6 +24,9 @@ type VideoListItem = {
     status: EducationalVideoStatus;
     statusLabel: string;
     template: string;
+    thumbnailUrl: string | null;
+    slideCount: number;
+    formatLabel: string;
     createdAt: string | null;
 };
 
@@ -28,6 +38,7 @@ const HEADER_BAND: Record<string, string> = {
     notebook_lm: 'bg-gradient-to-br from-amber-200 via-orange-100 to-rose-100',
     standard_lecture:
         'bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950',
+    clean_minimal: 'bg-gradient-to-br from-white via-slate-50 to-violet-50',
 };
 
 function StatusIndicator({ status }: { status: EducationalVideoStatus }) {
@@ -45,6 +56,15 @@ function StatusIndicator({ status }: { status: EducationalVideoStatus }) {
             <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-red-700 shadow-sm">
                 <AlertCircle className="size-3.5" />
                 Failed
+            </span>
+        );
+    }
+
+    if (status === 'awaiting_review') {
+        return (
+            <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-amber-700 shadow-sm">
+                <ClipboardCheck className="size-3.5" />
+                Review
             </span>
         );
     }
@@ -93,17 +113,30 @@ export default function IndexEducationalVideos({ videos }: PageProps) {
                         >
                             <div
                                 className={cn(
-                                    'flex h-24 items-end p-4',
-                                    HEADER_BAND[video.template] ??
-                                        HEADER_BAND.standard_lecture,
+                                    'relative flex h-24 items-end overflow-hidden p-4',
+                                    !video.thumbnailUrl &&
+                                        (HEADER_BAND[video.template] ??
+                                            HEADER_BAND.standard_lecture),
                                 )}
                             >
+                                {video.thumbnailUrl && (
+                                    <img
+                                        src={video.thumbnailUrl}
+                                        alt=""
+                                        className="absolute inset-0 size-full object-cover"
+                                    />
+                                )}
                                 <StatusIndicator status={video.status} />
                             </div>
 
                             <div className="flex flex-1 flex-col gap-1 p-4">
                                 <p className="font-display line-clamp-2 font-bold text-violet-950 dark:text-white">
                                     {video.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {video.slideCount > 0 &&
+                                        `${video.slideCount} slides · `}
+                                    {video.formatLabel}
                                 </p>
                                 {video.createdAt && (
                                     <p className="text-xs text-muted-foreground">

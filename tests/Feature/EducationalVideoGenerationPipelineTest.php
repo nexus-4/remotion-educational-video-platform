@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\EducationalVideo\ContinueVideoGenerationAction;
 use App\Actions\EducationalVideo\QueueVideoGenerationAction;
 use App\Ai\Agents\StoryboardWriter;
 use App\Enums\AnimationStyle;
@@ -92,13 +93,23 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         Audio::fake();
         Image::fake();
 
-        Process::fake(function () use ($video) {
-            File::put("{$this->remotionPath}/out/{$video->id}.mp4", 'fake-mp4-bytes');
+        Process::fake(function ($process) use ($video) {
+            $filename = ($process->command[2] ?? '') === 'still'
+                ? "{$video->id}-thumb.jpg"
+                : "{$video->id}.mp4";
+
+            File::put("{$this->remotionPath}/out/{$filename}", 'fake-bytes');
 
             return 0;
         });
 
         (new QueueVideoGenerationAction)->handle($video);
+
+        $video->refresh();
+
+        $this->assertSame(VideoStatus::AwaitingReview, $video->status);
+
+        (new ContinueVideoGenerationAction)->handle($video);
 
         $video->refresh();
 
@@ -140,13 +151,18 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         Audio::fake();
         Image::fake(fn () => throw new \RuntimeException('image provider unavailable'));
 
-        Process::fake(function () use ($video) {
-            File::put("{$this->remotionPath}/out/{$video->id}.mp4", 'fake-mp4-bytes');
+        Process::fake(function ($process) use ($video) {
+            $filename = ($process->command[2] ?? '') === 'still'
+                ? "{$video->id}-thumb.jpg"
+                : "{$video->id}.mp4";
+
+            File::put("{$this->remotionPath}/out/{$filename}", 'fake-bytes');
 
             return 0;
         });
 
         (new QueueVideoGenerationAction)->handle($video);
+        (new ContinueVideoGenerationAction)->handle($video->refresh());
 
         $video->refresh();
 
@@ -174,8 +190,10 @@ class EducationalVideoGenerationPipelineTest extends TestCase
 
         Process::fake(fn () => 1);
 
+        (new QueueVideoGenerationAction)->handle($video);
+
         try {
-            (new QueueVideoGenerationAction)->handle($video);
+            (new ContinueVideoGenerationAction)->handle($video->refresh());
             $this->fail('Expected the pipeline to throw when rendering fails.');
         } catch (\Throwable) {
             // Expected: with the `sync` queue driver used in testing, the failed job's
