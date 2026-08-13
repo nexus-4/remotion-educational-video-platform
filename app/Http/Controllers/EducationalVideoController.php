@@ -86,6 +86,7 @@ class EducationalVideoController extends Controller
             'illustration_style' => $data['illustration_style'],
             'animation_style' => $data['animation_style'],
             'content_focus' => $data['content_focus'] ?? null,
+            'interactive' => $data['interactive'] ?? false,
         ]);
 
         (new QueueVideoGenerationAction)->handle($video);
@@ -110,6 +111,14 @@ class EducationalVideoController extends Controller
                 'error' => $video->error,
                 'videoUrl' => $video->video_path ? Storage::disk('public')->url($video->video_path) : null,
                 'hasWorksheet' => $video->worksheet !== null,
+                'interactiveCheckpoint' => $video->interactive_checkpoint === null ? null : [
+                    'afterSlideIndex' => $video->interactive_checkpoint['afterSlideIndex'],
+                    'question' => $video->interactive_checkpoint['question'],
+                    'options' => $video->interactive_checkpoint['options'],
+                    'correctOptionIndex' => $video->interactive_checkpoint['correctOptionIndex'],
+                ],
+                'slideTimings' => $video->slide_timings,
+                'remediationVideoUrl' => $video->remediation_video_path ? Storage::disk('public')->url($video->remediation_video_path) : null,
                 'scenePreviews' => $this->scenePreviews($video->template),
                 'slides' => collect($video->storyboard['slides'] ?? [])
                     ->values()

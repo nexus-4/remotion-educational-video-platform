@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import EducationalVideoController from '@/actions/App/Http/Controllers/EducationalVideoController';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,6 +55,7 @@ export default function CreateEducationalVideo({
     const [animationStyle, setAnimationStyle] = useState(
         animationStyles[0]?.value ?? '',
     );
+    const [interactive, setInteractive] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const goNext = () =>
@@ -144,6 +146,11 @@ export default function CreateEducationalVideo({
                                         type="hidden"
                                         name="animation_style"
                                         value={animationStyle}
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="interactive"
+                                        value={interactive ? '1' : '0'}
                                     />
 
                                     {/* Step 1: Upload */}
@@ -394,6 +401,37 @@ export default function CreateEducationalVideo({
                                             </div>
                                             <InputError
                                                 message={errors.format}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-start gap-3 rounded-2xl border-2 border-violet-100 p-4 dark:border-white/10">
+                                            <Checkbox
+                                                id="interactive"
+                                                checked={interactive}
+                                                onCheckedChange={(checked) =>
+                                                    setInteractive(
+                                                        checked === true,
+                                                    )
+                                                }
+                                                className="mt-0.5"
+                                            />
+                                            <div className="grid gap-1">
+                                                <Label
+                                                    htmlFor="interactive"
+                                                    className="cursor-pointer"
+                                                >
+                                                    Make it interactive
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Pauses once for a quick
+                                                    comprehension question. A
+                                                    wrong answer gets a short
+                                                    re-explanation before the
+                                                    video continues.
+                                                </p>
+                                            </div>
+                                            <InputError
+                                                message={errors.interactive}
                                             />
                                         </div>
 

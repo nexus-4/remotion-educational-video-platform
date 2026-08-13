@@ -24,18 +24,22 @@ use Illuminate\Support\Carbon;
  * @property IllustrationStyle $illustration_style
  * @property AnimationStyle $animation_style
  * @property string|null $content_focus
+ * @property bool $interactive
  * @property VideoStatus $status
  * @property string|null $progress
  * @property array<string, mixed>|null $storyboard
  * @property array<int, array<string, mixed>>|null $audio_manifest
  * @property array<int, array<string, mixed>>|null $worksheet
+ * @property array<string, mixed>|null $interactive_checkpoint
+ * @property array<int, array<string, mixed>>|null $slide_timings
  * @property string|null $video_path
+ * @property string|null $remediation_video_path
  * @property string|null $thumbnail_path
  * @property string|null $error
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['title', 'source_pdf_path', 'voice', 'template', 'format', 'illustration_style', 'animation_style', 'content_focus', 'status', 'progress', 'storyboard', 'audio_manifest', 'worksheet', 'video_path', 'thumbnail_path', 'error'])]
+#[Fillable(['title', 'source_pdf_path', 'voice', 'template', 'format', 'illustration_style', 'animation_style', 'content_focus', 'interactive', 'status', 'progress', 'storyboard', 'audio_manifest', 'worksheet', 'interactive_checkpoint', 'slide_timings', 'video_path', 'remediation_video_path', 'thumbnail_path', 'error'])]
 class EducationalVideo extends Model
 {
     /** @use HasFactory<EducationalVideoFactory> */
@@ -53,9 +57,12 @@ class EducationalVideo extends Model
             'illustration_style' => IllustrationStyle::class,
             'animation_style' => AnimationStyle::class,
             'status' => VideoStatus::class,
+            'interactive' => 'boolean',
             'storyboard' => 'array',
             'audio_manifest' => 'array',
             'worksheet' => 'array',
+            'interactive_checkpoint' => 'array',
+            'slide_timings' => 'array',
         ];
     }
 }

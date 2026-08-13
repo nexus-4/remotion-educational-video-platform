@@ -18,7 +18,12 @@ class GenerateStoryboardAction
     {
         Log::info("[EducationalVideo #{$video->id}] Prompting storyboard agent");
 
-        $agent = StoryboardWriter::make(template: $video->template, format: $video->format, contentFocus: $video->content_focus);
+        $agent = StoryboardWriter::make(
+            template: $video->template,
+            format: $video->format,
+            contentFocus: $video->content_focus,
+            interactive: $video->interactive,
+        );
 
         $response = $agent->prompt(
             'Turn the attached document into an educational video storyboard.',

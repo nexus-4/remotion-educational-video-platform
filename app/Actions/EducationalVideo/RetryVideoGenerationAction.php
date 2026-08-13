@@ -5,6 +5,7 @@ namespace App\Actions\EducationalVideo;
 use App\Actions\EducationalVideo\Concerns\CatchesChainFailures;
 use App\Enums\VideoStatus;
 use App\Jobs\EducationalVideo\BuildRenderManifestJob;
+use App\Jobs\EducationalVideo\GenerateRemediationVideoJob;
 use App\Jobs\EducationalVideo\GenerateStoryboardJob;
 use App\Jobs\EducationalVideo\IllustrateSlidesJob;
 use App\Jobs\EducationalVideo\NarrateSlidesJob;
@@ -53,6 +54,7 @@ class RetryVideoGenerationAction
                 new IllustrateSlidesJob($video),
                 new BuildRenderManifestJob($video),
                 new RenderEducationalVideoJob($video),
+                ...$this->remediationStage($video),
             ]];
         }
 
@@ -63,12 +65,22 @@ class RetryVideoGenerationAction
                 new IllustrateSlidesJob($video),
                 new BuildRenderManifestJob($video),
                 new RenderEducationalVideoJob($video),
+                ...$this->remediationStage($video),
             ]];
         }
 
         return [VideoStatus::Rendering, [
             new BuildRenderManifestJob($video),
             new RenderEducationalVideoJob($video),
+            ...$this->remediationStage($video),
         ]];
+    }
+
+    /**
+     * @return array<int, ShouldQueue>
+     */
+    private function remediationStage(EducationalVideo $video): array
+    {
+        return $video->interactive_checkpoint !== null ? [new GenerateRemediationVideoJob($video)] : [];
     }
 }

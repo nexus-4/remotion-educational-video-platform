@@ -33,9 +33,12 @@ class GenerateStoryboardJob implements ShouldQueue
         ]);
 
         $storyboard = $action->handle($this->video);
+        $checkpoint = $storyboard['checkpoint'] ?? null;
+        unset($storyboard['checkpoint']);
 
         $this->video->update([
             'storyboard' => $storyboard,
+            'interactive_checkpoint' => $checkpoint,
             'status' => VideoStatus::AwaitingReview,
             'progress' => null,
         ]);

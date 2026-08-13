@@ -49,6 +49,47 @@ class EducationalVideoGenerationPipelineTest extends TestCase
     /**
      * @return array<string, mixed>
      */
+    private function fakeInteractiveStoryboard(): array
+    {
+        return [
+            ...$this->fakeStoryboard(),
+            'checkpoint' => [
+                'afterSlideIndex' => 1,
+                'question' => 'What causes evaporation?',
+                'options' => ['The sun heating water', 'The moon pulling water'],
+                'correctOptionIndex' => 0,
+                'remediationHeading' => 'Let\'s try again',
+                'remediationNarration' => 'Heat from the sun warms water until it turns into vapor.',
+                'remediationImagePrompt' => 'A simple flat illustration of steam rising from a warm puddle.',
+            ],
+        ];
+    }
+
+    /**
+     * A `Process::fake` handler that writes fake bytes to whatever output path each Remotion
+     * CLI invocation was given (main video, remediation clip, or thumbnail), and returns a
+     * fake duration for `ffprobe` calls used by `ComputeSlideTimingsAction`.
+     */
+    private function fakeProcessHandler(): \Closure
+    {
+        return function ($process) {
+            if (($process->command[0] ?? null) === 'ffprobe') {
+                return '5';
+            }
+
+            $outputRelativePath = $process->command[4] ?? null;
+
+            if ($outputRelativePath !== null) {
+                File::put("{$this->remotionPath}/{$outputRelativePath}", 'fake-bytes');
+            }
+
+            return 0;
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function fakeStoryboard(): array
     {
         return [
@@ -204,5 +245,131 @@ class EducationalVideoGenerationPipelineTest extends TestCase
 
         $this->assertSame(VideoStatus::Failed, $video->status);
         $this->assertNotNull($video->error);
+    }
+
+    public function test_it_generates_a_remediation_clip_and_slide_timings_for_an_interactive_video()
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $video = EducationalVideo::factory()->create([
+            'source_pdf_path' => 'educational-videos/pdfs/lesson.pdf',
+            'interactive' => true,
+        ]);
+
+        Storage::disk('local')->put($video->source_pdf_path, 'fake-pdf-bytes');
+
+        StoryboardWriter::fake([$this->fakeInteractiveStoryboard()]);
+        Audio::fake();
+        Image::fake();
+        Process::fake($this->fakeProcessHandler());
+
+        (new QueueVideoGenerationAction)->handle($video);
+
+        $video->refresh();
+
+        $this->assertArrayNotHasKey('checkpoint', $video->storyboard);
+        $this->assertSame(0, $video->interactive_checkpoint['correctOptionIndex']);
+
+        (new ContinueVideoGenerationAction)->handle($video);
+
+        $video->refresh();
+
+        $this->assertSame(VideoStatus::Completed, $video->status);
+        $this->assertNull($video->progress);
+        $this->assertNotNull($video->video_path);
+        Storage::disk('public')->assertExists($video->video_path);
+
+        // The main video's own assets are untouched, at their normal (non-suffixed) path.
+        $this->assertFileExists("{$this->remotionPath}/public/generated/{$video->id}/manifest.json");
+
+        // The remediation clip is rendered and stored independently, under a distinct id.
+        $this->assertNotNull($video->remediation_video_path);
+        Storage::disk('public')->assertExists($video->remediation_video_path);
+        $this->assertFileExists("{$this->remotionPath}/public/generated/{$video->id}-remediation/manifest.json");
+        $this->assertFileExists("{$this->remotionPath}/public/generated/{$video->id}-remediation/audio/slide-0.mp3");
+        $this->assertFileExists("{$this->remotionPath}/public/generated/{$video->id}-remediation/images/slide-0.png");
+
+        $remediationManifest = json_decode(File::get("{$this->remotionPath}/public/generated/{$video->id}-remediation/manifest.json"), true);
+        $this->assertSame("Let's try again", $remediationManifest['title']);
+        $this->assertCount(1, $remediationManifest['slides']);
+
+        $this->assertCount(2, $video->slide_timings);
+        $this->assertEquals(0, $video->slide_timings[0]['startSeconds']);
+        $this->assertGreaterThan($video->slide_timings[0]['startSeconds'], $video->slide_timings[0]['endSeconds']);
+        $this->assertEquals($video->slide_timings[0]['endSeconds'], $video->slide_timings[1]['startSeconds']);
+    }
+
+    public function test_a_non_interactive_video_never_gets_a_checkpoint_remediation_clip_or_slide_timings()
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $video = EducationalVideo::factory()->create([
+            'source_pdf_path' => 'educational-videos/pdfs/lesson.pdf',
+        ]);
+
+        Storage::disk('local')->put($video->source_pdf_path, 'fake-pdf-bytes');
+
+        StoryboardWriter::fake([$this->fakeStoryboard()]);
+        Audio::fake();
+        Image::fake();
+        Process::fake($this->fakeProcessHandler());
+
+        (new QueueVideoGenerationAction)->handle($video);
+        (new ContinueVideoGenerationAction)->handle($video->refresh());
+
+        $video->refresh();
+
+        $this->assertFalse($video->interactive);
+        $this->assertNull($video->interactive_checkpoint);
+        $this->assertNull($video->remediation_video_path);
+        $this->assertNull($video->slide_timings);
+        $this->assertDirectoryDoesNotExist("{$this->remotionPath}/public/generated/{$video->id}-remediation");
+    }
+
+    public function test_a_failed_remediation_clip_does_not_fail_an_otherwise_completed_interactive_video()
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $video = EducationalVideo::factory()->create([
+            'source_pdf_path' => 'educational-videos/pdfs/lesson.pdf',
+            'interactive' => true,
+        ]);
+
+        Storage::disk('local')->put($video->source_pdf_path, 'fake-pdf-bytes');
+
+        StoryboardWriter::fake([$this->fakeInteractiveStoryboard()]);
+        Audio::fake();
+        Image::fake();
+
+        Process::fake(function ($process) {
+            $outputRelativePath = $process->command[4] ?? null;
+
+            if ($outputRelativePath !== null && str_contains($outputRelativePath, 'remediation')) {
+                return 1;
+            }
+
+            if (($process->command[0] ?? null) === 'ffprobe') {
+                return '5';
+            }
+
+            if ($outputRelativePath !== null) {
+                File::put("{$this->remotionPath}/{$outputRelativePath}", 'fake-bytes');
+            }
+
+            return 0;
+        });
+
+        (new QueueVideoGenerationAction)->handle($video);
+        (new ContinueVideoGenerationAction)->handle($video->refresh());
+
+        $video->refresh();
+
+        $this->assertSame(VideoStatus::Completed, $video->status);
+        $this->assertNull($video->error);
+        $this->assertNotNull($video->video_path);
+        $this->assertNull($video->remediation_video_path);
     }
 }

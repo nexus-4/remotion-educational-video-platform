@@ -98,6 +98,46 @@ class EducationalVideoControllerTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('educational-videos/show')
                 ->where('video.status', 'completed')
+                ->where('video.interactiveCheckpoint', null)
+                ->where('video.remediationVideoUrl', null)
+            );
+    }
+
+    public function test_show_includes_the_interactive_checkpoint_and_remediation_url_when_present()
+    {
+        Storage::fake('public');
+
+        $video = EducationalVideo::factory()->completed()->create([
+            'interactive' => true,
+            'interactive_checkpoint' => [
+                'afterSlideIndex' => 1,
+                'question' => 'What causes evaporation?',
+                'options' => ['The sun heating water', 'The moon pulling water'],
+                'correctOptionIndex' => 0,
+                'remediationHeading' => "Let's try again",
+                'remediationNarration' => 'Heat from the sun warms water until it turns into vapor.',
+                'remediationImagePrompt' => null,
+            ],
+            'slide_timings' => [
+                ['index' => 0, 'startSeconds' => 0, 'endSeconds' => 6],
+                ['index' => 1, 'startSeconds' => 6, 'endSeconds' => 12],
+            ],
+        ]);
+
+        Storage::disk('public')->put("educational-videos/{$video->id}-remediation.mp4", 'fake-bytes');
+        $video->update(['remediation_video_path' => "educational-videos/{$video->id}-remediation.mp4"]);
+
+        $this->get(route('educational-videos.show', $video))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('educational-videos/show')
+                ->where('video.interactiveCheckpoint.afterSlideIndex', 1)
+                ->where('video.interactiveCheckpoint.question', 'What causes evaporation?')
+                ->where('video.interactiveCheckpoint.options', ['The sun heating water', 'The moon pulling water'])
+                ->where('video.interactiveCheckpoint.correctOptionIndex', 0)
+                ->missing('video.interactiveCheckpoint.remediationHeading')
+                ->has('video.slideTimings', 2)
+                ->where('video.remediationVideoUrl', Storage::disk('public')->url($video->remediation_video_path))
             );
     }
 

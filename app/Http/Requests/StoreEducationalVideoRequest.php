@@ -29,6 +29,7 @@ class StoreEducationalVideoRequest extends FormRequest
             'illustration_style' => ['required', Rule::enum(IllustrationStyle::class)],
             'animation_style' => ['required', Rule::enum(AnimationStyle::class)],
             'content_focus' => ['nullable', 'string', 'max:500'],
+            'interactive' => ['sometimes', 'boolean'],
         ];
     }
 }

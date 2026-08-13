@@ -14,6 +14,11 @@ import { useEffect, useState } from 'react';
 import EducationalVideoController from '@/actions/App/Http/Controllers/EducationalVideoController';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import type {
+    InteractiveCheckpoint,
+    SlideTiming,
+} from './components/interactive-video-player';
+import { InteractiveVideoPlayer } from './components/interactive-video-player';
 import type { StoryboardSlide } from './components/storyboard-review';
 import { StoryboardReview } from './components/storyboard-review';
 
@@ -38,8 +43,13 @@ type PageProps = {
         hasWorksheet: boolean;
         scenePreviews: Record<string, string | null>;
         slides: StoryboardSlide[];
+        interactiveCheckpoint: InteractiveCheckpoint | null;
+        slideTimings: SlideTiming[] | null;
+        remediationVideoUrl: string | null;
     };
 };
+
+const REMEDIATION_POLL_LIMIT = 60;
 
 const STAGES: {
     key: EducationalVideoStatus;
@@ -106,14 +116,37 @@ function StageProgress({ status }: { status: EducationalVideoStatus }) {
 export default function ShowEducationalVideo({ video }: PageProps) {
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
     const [isGeneratingWorksheet, setIsGeneratingWorksheet] = useState(false);
+    const [remediationPollCount, setRemediationPollCount] = useState(0);
+
+    const isInteractive = video.interactiveCheckpoint !== null;
+    const isInteractiveReady =
+        isInteractive &&
+        video.videoUrl !== null &&
+        video.remediationVideoUrl !== null &&
+        video.slideTimings !== null &&
+        video.slideTimings.length > 0;
+
+    // For an interactive video, the main video finishes rendering (flipping the status to
+    // `completed`) before its remediation clip does — that clip is generated as one more
+    // stage appended after the main pipeline. Keep polling a little longer in that case so
+    // the interactive player appears once it's ready, instead of the plain video staying up
+    // forever. Capped so a permanently failed remediation clip doesn't poll forever either.
+    const waitingForRemediation =
+        isInteractive &&
+        video.status === 'completed' &&
+        !isInteractiveReady &&
+        remediationPollCount < REMEDIATION_POLL_LIMIT;
 
     const isTerminal =
-        video.status === 'completed' || video.status === 'failed';
+        (video.status === 'completed' || video.status === 'failed') &&
+        !waitingForRemediation;
     const isAwaitingReview = video.status === 'awaiting_review';
 
     const { stop } = usePoll(
         3000,
-        {},
+        {
+            onSuccess: () => setRemediationPollCount((count) => count + 1),
+        },
         {
             autoStart: !isTerminal && !isAwaitingReview,
             // `keepAlive` is required here — Inertia pauses polling by default while the tab
@@ -243,7 +276,21 @@ export default function ShowEducationalVideo({ video }: PageProps) {
                             </div>
                         )}
 
-                        {video.status === 'completed' && video.videoUrl ? (
+                        {video.status === 'completed' &&
+                        video.videoUrl &&
+                        isInteractiveReady &&
+                        video.interactiveCheckpoint &&
+                        video.remediationVideoUrl &&
+                        video.slideTimings ? (
+                            <InteractiveVideoPlayer
+                                videoUrl={video.videoUrl}
+                                remediationVideoUrl={video.remediationVideoUrl}
+                                checkpoint={video.interactiveCheckpoint}
+                                slideTimings={video.slideTimings}
+                            />
+                        ) : video.status === 'completed' &&
+                          video.videoUrl &&
+                          !waitingForRemediation ? (
                             <div className="overflow-hidden rounded-3xl border border-violet-100 bg-white/70 p-3 shadow-sm dark:border-white/10 dark:bg-white/5">
                                 <video
                                     controls

@@ -19,6 +19,7 @@ class StoryboardWriter implements Agent, HasStructuredOutput
         public VideoTemplate $template,
         public VideoFormat $format,
         public ?string $contentFocus = null,
+        public bool $interactive = false,
     ) {}
 
     /**
@@ -35,6 +36,19 @@ class StoryboardWriter implements Agent, HasStructuredOutput
         $focus = $this->contentFocus === null
             ? ''
             : "\n\nThe student/teacher specifically wants this video to focus on: {$this->contentFocus}. Make sure the storyboard reflects that emphasis.";
+
+        $checkpoint = ! $this->interactive
+            ? ''
+            : "\n\nThis video is INTERACTIVE: also fill in the top-level \"checkpoint\" object, a single "
+                .'comprehension check placed after a real concept has already been taught partway through the '
+                .'video (never after the intro, and never as/after the outro). Set "afterSlideIndex" to the '
+                .'0-based index of the slide the checkpoint follows. Write a short "question" a student could '
+                ."answer just from what's been said so far, with exactly 2 short \"options\" and a "
+                .'"correctOptionIndex" (0 or 1). Write a "remediationHeading" and "remediationNarration" '
+                .'that re-teach the same concept a genuinely different way (a different example or a simpler '
+                ."explanation, not a repeat of the original slide's wording) for a student who answers wrong. "
+                .'Optionally set "remediationImagePrompt" the same way as a normal slide\'s "imagePrompt" '
+                .'(subject matter only, no art-style words), or leave it null if no illustration is needed.';
 
         return <<<INSTRUCTIONS
             You are an instructional designer who turns source documents into short educational videos for
@@ -73,7 +87,7 @@ class StoryboardWriter implements Agent, HasStructuredOutput
             showing evaporation from the ocean and rain falling on mountains"). Describe only the SUBJECT
             MATTER, not an art style — the rendering style is applied separately. Leave "imagePrompt" null for
             all of those types — they never display an illustration.
-            {$focus}
+            {$focus}{$checkpoint}
             INSTRUCTIONS;
     }
 
@@ -85,6 +99,8 @@ class StoryboardWriter implements Agent, HasStructuredOutput
     public function schema(JsonSchema $schema): array
     {
         return [
+            ...($this->interactive ? ['checkpoint' => $this->checkpointSchema($schema)] : []),
+
             'title' => $schema->string()
                 ->description('A short, engaging title for the video.')
                 ->required(),
@@ -157,5 +173,38 @@ class StoryboardWriter implements Agent, HasStructuredOutput
                 ->description('The ordered slides that make up the video.')
                 ->required(),
         ];
+    }
+
+    /**
+     * Build the schema for the single interactive comprehension checkpoint.
+     */
+    private function checkpointSchema(JsonSchema $schema): Type
+    {
+        return $schema->object([
+            'afterSlideIndex' => $schema->integer()
+                ->description('The 0-based index of the slide this checkpoint follows.')
+                ->required(),
+            'question' => $schema->string()
+                ->description('A short comprehension question answerable from what has been taught so far.')
+                ->required(),
+            'options' => $schema->array()
+                ->items($schema->string())
+                ->min(2)
+                ->max(2)
+                ->description('Exactly 2 short answer options.')
+                ->required(),
+            'correctOptionIndex' => $schema->integer()
+                ->description('The 0-based index (0 or 1) of the correct option.')
+                ->required(),
+            'remediationHeading' => $schema->string()
+                ->description('A short heading for the remediation slide shown after a wrong answer.')
+                ->required(),
+            'remediationNarration' => $schema->string()
+                ->description('A differently-worded re-teaching of the same concept, for a wrong answer.')
+                ->required(),
+            'remediationImagePrompt' => $schema->string()
+                ->description('Optional short, literal description of the subject matter to illustrate for the remediation slide (no art-style words).')
+                ->nullable(),
+        ])->withoutAdditionalProperties()->required();
     }
 }
