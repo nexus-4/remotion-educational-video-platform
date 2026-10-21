@@ -195,7 +195,10 @@ class EducationalVideoController extends Controller
 
         $originalSlides = $video->storyboard['slides'];
 
-        $slides = collect($request->validated('slides'))
+        /** @var array<int, array<string, mixed>> $editedSlides */
+        $editedSlides = $request->validated('slides');
+
+        $slides = collect($editedSlides)
             ->map(fn (array $edited): array => [
                 // A slide added during review (negative `originalIndex`) has no AI-written
                 // slide to fall back to — it only carries the fields explicitly listed below.
