@@ -128,6 +128,12 @@ class EducationalVideoController extends Controller
      */
     public function show(EducationalVideo $video): Response
     {
+        /** @var array<int, string> $userPhotos */
+        $userPhotos = $video->user_photos ?? [];
+
+        /** @var array<int, array<string, mixed>> $storyboardSlides */
+        $storyboardSlides = $video->storyboard['slides'] ?? [];
+
         return Inertia::render('educational-videos/show', [
             'video' => [
                 'id' => $video->id,
@@ -146,11 +152,11 @@ class EducationalVideoController extends Controller
                 ],
                 'slideTimings' => $video->slide_timings,
                 'remediationVideoUrl' => $video->remediation_video_path ? Storage::disk('public')->url($video->remediation_video_path) : null,
-                'userPhotos' => collect($video->user_photos ?? [])
+                'userPhotos' => collect($userPhotos)
                     ->map(fn (string $path): array => ['path' => $path, 'url' => Storage::disk('public')->url($path)])
                     ->all(),
                 'scenePreviews' => $this->scenePreviews($video->template),
-                'slides' => collect($video->storyboard['slides'] ?? [])
+                'slides' => collect($storyboardSlides)
                     ->values()
                     ->map(fn (array $slide, int $index): array => [
                         'originalIndex' => $index,

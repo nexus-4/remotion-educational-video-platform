@@ -23,6 +23,7 @@ class NarrateSlidesJob implements ShouldQueue
     {
         $this->video->update(['status' => VideoStatus::GeneratingAudio]);
 
+        /** @var array<int, array<string, mixed>> $slides */
         $slides = $this->video->storyboard['slides'];
         $total = count($slides);
 

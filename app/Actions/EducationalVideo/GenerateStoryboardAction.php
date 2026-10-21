@@ -6,6 +6,8 @@ use App\Ai\Agents\StoryboardWriter;
 use App\Models\EducationalVideo;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Files\Document;
+use Laravel\Ai\Responses\StructuredAgentResponse;
+use UnexpectedValueException;
 
 class GenerateStoryboardAction
 {
@@ -33,6 +35,10 @@ class GenerateStoryboardAction
                 attachments: [Document::fromStorage($video->source_pdf_path, 'local')],
             )
             : $agent->prompt("Turn this into an educational video storyboard in Brazilian Portuguese (pt-BR) about: {$video->topic}");
+
+        if (! $response instanceof StructuredAgentResponse) {
+            throw new UnexpectedValueException('The storyboard agent did not return structured data.');
+        }
 
         $storyboard = $response->toArray();
 

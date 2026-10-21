@@ -39,7 +39,9 @@ class IllustrateSlideAction
                 'usage' => $image->usage->toArray(),
             ]);
 
-            return $image->storeAs("educational-videos/{$video->id}/images", "slide-{$index}.png", 'local');
+            $storedPath = $image->storeAs("educational-videos/{$video->id}/images", "slide-{$index}.png", 'local');
+
+            return is_string($storedPath) ? $storedPath : null;
         } catch (Throwable $e) {
             Log::warning("[EducationalVideo #{$video->id}] Illustration failed for slide {$index}, continuing without it", [
                 'message' => $e->getMessage(),
