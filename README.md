@@ -60,7 +60,7 @@ pipeline states, data boundaries, and extension points.
 
 | Area | Technology |
 | --- | --- |
-| Backend | PHP 8.3+, Laravel 13 |
+| Backend | PHP 8.4+, Laravel 13 |
 | AI | Laravel AI with OpenAI |
 | Frontend | React 19, Inertia 3, TypeScript |
 | Video | Remotion 4 |
@@ -72,7 +72,7 @@ pipeline states, data boundaries, and extension points.
 
 ### Requirements
 
-- PHP 8.3 or newer
+- PHP 8.4 or newer
 - Composer
 - Node.js and npm
 - FFmpeg (required by the media tooling used by the video pipeline)
