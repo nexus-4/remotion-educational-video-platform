@@ -77,7 +77,7 @@ class EducationalVideoGenerationPipelineTest extends TestCase
                 return '5';
             }
 
-            $outputRelativePath = $process->command[4] ?? null;
+            $outputRelativePath = $process->command[3] ?? null;
 
             if ($outputRelativePath !== null) {
                 File::put("{$this->remotionPath}/{$outputRelativePath}", 'fake-bytes');
@@ -135,7 +135,7 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         Image::fake();
 
         Process::fake(function ($process) use ($video) {
-            $filename = ($process->command[2] ?? '') === 'still'
+            $filename = ($process->command[1] ?? '') === 'still'
                 ? "{$video->id}-thumb.jpg"
                 : "{$video->id}.mp4";
 
@@ -173,8 +173,39 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         $manifest = json_decode(File::get("{$this->remotionPath}/public/generated/{$video->id}/manifest.json"), true);
         $this->assertSame('images/slide-0.png', $manifest['slides'][0]['imageFile']);
         $this->assertSame('pop_in', $manifest['animationStyle']);
+        $this->assertNull($manifest['logoFile']);
 
-        Process::assertRan(fn ($process) => str_contains($process->command[0] ?? '', 'npx'));
+        Process::assertRan(fn ($process) => str_ends_with($process->command[0] ?? '', '/node_modules/.bin/remotion'));
+    }
+
+    public function test_it_includes_the_institution_logo_in_the_render_manifest()
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $video = EducationalVideo::factory()->create([
+            'source_pdf_path' => 'educational-videos/pdfs/lesson.pdf',
+            'logo_path' => 'educational-videos/logos/school-logo.png',
+        ]);
+
+        Storage::disk('local')->put($video->source_pdf_path, 'fake-pdf-bytes');
+        Storage::disk('local')->put('educational-videos/logos/school-logo.png', 'fake-logo-bytes');
+
+        StoryboardWriter::fake([$this->fakeStoryboard()]);
+        Audio::fake();
+        Image::fake();
+        Process::fake($this->fakeProcessHandler());
+
+        (new QueueVideoGenerationAction)->handle($video);
+        (new ContinueVideoGenerationAction)->handle($video->refresh());
+
+        $video->refresh();
+
+        $this->assertSame(VideoStatus::Completed, $video->status);
+
+        $manifest = json_decode(File::get("{$this->remotionPath}/public/generated/{$video->id}/manifest.json"), true);
+        $this->assertSame('logo.png', $manifest['logoFile']);
+        $this->assertSame('fake-logo-bytes', File::get("{$this->remotionPath}/public/generated/{$video->id}/logo.png"));
     }
 
     public function test_it_continues_without_an_illustration_when_image_generation_fails()
@@ -193,7 +224,7 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         Image::fake(fn () => throw new \RuntimeException('image provider unavailable'));
 
         Process::fake(function ($process) use ($video) {
-            $filename = ($process->command[2] ?? '') === 'still'
+            $filename = ($process->command[1] ?? '') === 'still'
                 ? "{$video->id}-thumb.jpg"
                 : "{$video->id}.mp4";
 
@@ -212,6 +243,46 @@ class EducationalVideoGenerationPipelineTest extends TestCase
 
         $manifest = json_decode(File::get("{$this->remotionPath}/public/generated/{$video->id}/manifest.json"), true);
         $this->assertNull($manifest['slides'][0]['imageFile']);
+    }
+
+    public function test_it_uses_an_assigned_user_photo_instead_of_generating_an_illustration_for_that_slide()
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $video = EducationalVideo::factory()->create([
+            'source_pdf_path' => 'educational-videos/pdfs/lesson.pdf',
+            'user_photos' => ['educational-videos/user-photos/classroom.jpg'],
+        ]);
+
+        Storage::disk('local')->put($video->source_pdf_path, 'fake-pdf-bytes');
+        Storage::disk('public')->put('educational-videos/user-photos/classroom.jpg', 'real-photo-bytes');
+
+        StoryboardWriter::fake([$this->fakeStoryboard()]);
+        Audio::fake();
+        Image::fake();
+        Process::fake($this->fakeProcessHandler());
+
+        (new QueueVideoGenerationAction)->handle($video);
+
+        $video->refresh();
+        $storyboard = $video->storyboard;
+        $storyboard['slides'][1]['userPhotoPath'] = 'educational-videos/user-photos/classroom.jpg';
+        $storyboard['slides'][1]['imagePrompt'] = null;
+        $video->update(['storyboard' => $storyboard]);
+
+        (new ContinueVideoGenerationAction)->handle($video->refresh());
+
+        $video->refresh();
+
+        $this->assertSame(VideoStatus::Completed, $video->status);
+
+        // The photo-assigned slide got the uploaded photo's bytes, not an AI illustration.
+        $this->assertSame('real-photo-bytes', Storage::disk('local')->get($video->audio_manifest[1]['imagePath']));
+
+        // The other slide (intro) was still illustrated normally by the AI.
+        $this->assertNotNull($video->audio_manifest[0]['imagePath']);
+        Image::assertGenerated(fn ($prompt): bool => str_contains($prompt->prompt, 'water droplet'));
     }
 
     public function test_it_marks_the_video_as_failed_when_rendering_fails()
@@ -255,9 +326,11 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         $video = EducationalVideo::factory()->create([
             'source_pdf_path' => 'educational-videos/pdfs/lesson.pdf',
             'interactive' => true,
+            'logo_path' => 'educational-videos/logos/school-logo.png',
         ]);
 
         Storage::disk('local')->put($video->source_pdf_path, 'fake-pdf-bytes');
+        Storage::disk('local')->put('educational-videos/logos/school-logo.png', 'fake-logo-bytes');
 
         StoryboardWriter::fake([$this->fakeInteractiveStoryboard()]);
         Audio::fake();
@@ -293,6 +366,10 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         $remediationManifest = json_decode(File::get("{$this->remotionPath}/public/generated/{$video->id}-remediation/manifest.json"), true);
         $this->assertSame("Let's try again", $remediationManifest['title']);
         $this->assertCount(1, $remediationManifest['slides']);
+
+        // The remediation clip carries the same institution logo as the main video.
+        $this->assertSame('logo.png', $remediationManifest['logoFile']);
+        $this->assertSame('fake-logo-bytes', File::get("{$this->remotionPath}/public/generated/{$video->id}-remediation/logo.png"));
 
         $this->assertCount(2, $video->slide_timings);
         $this->assertEquals(0, $video->slide_timings[0]['startSeconds']);
@@ -345,7 +422,7 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         Image::fake();
 
         Process::fake(function ($process) {
-            $outputRelativePath = $process->command[4] ?? null;
+            $outputRelativePath = $process->command[3] ?? null;
 
             if ($outputRelativePath !== null && str_contains($outputRelativePath, 'remediation')) {
                 return 1;
@@ -371,5 +448,41 @@ class EducationalVideoGenerationPipelineTest extends TestCase
         $this->assertNull($video->error);
         $this->assertNotNull($video->video_path);
         $this->assertNull($video->remediation_video_path);
+    }
+
+    public function test_it_generates_a_video_from_a_topic_with_no_source_document()
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $video = EducationalVideo::factory()->create([
+            'source_pdf_path' => null,
+            'topic' => 'The water cycle and how rain forms',
+        ]);
+
+        StoryboardWriter::fake([$this->fakeStoryboard()]);
+        Audio::fake();
+        Image::fake();
+
+        Process::fake(function ($process) use ($video) {
+            $filename = ($process->command[1] ?? '') === 'still'
+                ? "{$video->id}-thumb.jpg"
+                : "{$video->id}.mp4";
+
+            File::put("{$this->remotionPath}/out/{$filename}", 'fake-bytes');
+
+            return 0;
+        });
+
+        (new QueueVideoGenerationAction)->handle($video);
+        (new ContinueVideoGenerationAction)->handle($video->refresh());
+
+        $video->refresh();
+
+        $this->assertSame(VideoStatus::Completed, $video->status);
+        $this->assertNotNull($video->video_path);
+
+        StoryboardWriter::assertPrompted(fn ($prompt): bool => $prompt->attachments->isEmpty()
+            && str_contains($prompt->prompt, 'The water cycle and how rain forms'));
     }
 }

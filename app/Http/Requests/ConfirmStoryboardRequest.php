@@ -23,7 +23,10 @@ class ConfirmStoryboardRequest extends FormRequest
 
         return [
             'slides' => ['required', 'array', 'min:'.$video->format->minimumSlides(), 'max:'.$video->format->maximumSlides()],
-            'slides.*.originalIndex' => ['required', 'integer', 'min:0', 'max:'.(count($video->storyboard['slides'] ?? []) - 1)],
+            // Slides added during review (see `StoryboardReview`'s "Add a scene") have no
+            // AI-written slide to reference and use a descending negative sentinel instead —
+            // so this only bounds real indexes, not the sentinel range.
+            'slides.*.originalIndex' => ['required', 'integer', 'max:'.(count($video->storyboard['slides'] ?? []) - 1)],
             'slides.*.type' => ['required', Rule::enum(SlideType::class)],
             'slides.*.heading' => ['required', 'string', 'max:255'],
             'slides.*.narration' => ['required', 'string'],
@@ -31,6 +34,7 @@ class ConfirmStoryboardRequest extends FormRequest
             'slides.*.bullets.*' => ['string'],
             'slides.*.formula' => ['nullable', 'string', 'required_if:slides.*.type,formula'],
             'slides.*.imagePrompt' => ['nullable', 'string'],
+            'slides.*.userPhotoPath' => ['nullable', Rule::in($video->user_photos ?? [])],
             'slides.*.leftLabel' => ['nullable', 'string', 'required_if:slides.*.type,comparison'],
             'slides.*.leftItems' => ['nullable', 'array', 'min:1', 'max:4', 'required_if:slides.*.type,comparison'],
             'slides.*.leftItems.*' => ['string'],

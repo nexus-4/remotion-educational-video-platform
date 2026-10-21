@@ -1,10 +1,11 @@
 import { router } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Plus, Sparkles, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { SceneTypePicker } from './scene-type-picker';
 
 export type StoryboardSlideType =
@@ -18,6 +19,11 @@ export type StoryboardSlideType =
     | 'definition'
     | 'outro';
 
+export type UserPhoto = {
+    path: string;
+    url: string;
+};
+
 export type StoryboardSlide = {
     originalIndex: number;
     type: StoryboardSlideType;
@@ -26,6 +32,7 @@ export type StoryboardSlide = {
     bullets: string[] | null;
     formula: string | null;
     imagePrompt: string | null;
+    userPhotoPath: string | null;
     leftLabel: string | null;
     leftItems: string[] | null;
     rightLabel: string | null;
@@ -88,6 +95,7 @@ const EMPTY_TYPE_FIELDS: Omit<
     bullets: null,
     formula: null,
     imagePrompt: null,
+    userPhotoPath: null,
     leftLabel: null,
     leftItems: null,
     rightLabel: null,
@@ -164,14 +172,20 @@ export function StoryboardReview({
     confirmUrl,
     errors,
     scenePreviews,
+    userPhotos,
 }: {
     slides: StoryboardSlide[];
     confirmUrl: string;
     errors: Record<string, string>;
     scenePreviews: Record<string, string | null>;
+    userPhotos: UserPhoto[];
 }) {
     const [slides, setSlides] = useState(initialSlides);
     const [processing, setProcessing] = useState(false);
+    // New scenes have no AI-written slide to reference, so they're keyed with
+    // descending negative indexes — guaranteed never to collide with a real
+    // (non-negative) `originalIndex`.
+    const nextNewSlideIndex = useRef(-1);
 
     function updateSlide(index: number, patch: Partial<StoryboardSlide>) {
         setSlides((current) =>
@@ -187,6 +201,24 @@ export function StoryboardReview({
 
     function removeSlide(index: number) {
         setSlides((current) => current.filter((_, i) => i !== index));
+    }
+
+    function addSlide() {
+        const newSlide: StoryboardSlide = {
+            originalIndex: nextNewSlideIndex.current--,
+            type: 'content',
+            heading: '',
+            narration: '',
+            ...EMPTY_TYPE_FIELDS,
+        };
+
+        // Inserted right before the ending slide, which must stay last — the
+        // up/down arrows can move it anywhere else afterward.
+        setSlides((current) => [
+            ...current.slice(0, -1),
+            newSlide,
+            ...current.slice(-1),
+        ]);
     }
 
     function submit() {
@@ -346,15 +378,64 @@ export function StoryboardReview({
                                 )}
 
                             {!NO_IMAGE_TYPES.includes(slide.type) && (
-                                <Input
-                                    value={slide.imagePrompt ?? ''}
-                                    onChange={(e) =>
-                                        updateSlide(index, {
-                                            imagePrompt: e.target.value,
-                                        })
-                                    }
-                                    placeholder="What the illustration should show"
-                                />
+                                <div className="space-y-1.5">
+                                    <Input
+                                        value={slide.imagePrompt ?? ''}
+                                        disabled={slide.userPhotoPath !== null}
+                                        onChange={(e) =>
+                                            updateSlide(index, {
+                                                imagePrompt: e.target.value,
+                                            })
+                                        }
+                                        placeholder="What the illustration should show"
+                                    />
+
+                                    {userPhotos.length > 0 && (
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-muted-foreground">
+                                                Or use one of your photos
+                                                instead:
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {userPhotos.map((photo) => {
+                                                    const selected =
+                                                        slide.userPhotoPath ===
+                                                        photo.path;
+
+                                                    return (
+                                                        <button
+                                                            key={photo.path}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                updateSlide(
+                                                                    index,
+                                                                    {
+                                                                        userPhotoPath:
+                                                                            selected
+                                                                                ? null
+                                                                                : photo.path,
+                                                                    },
+                                                                )
+                                                            }
+                                                            className={cn(
+                                                                'size-14 overflow-hidden rounded-lg border-2 transition-all',
+                                                                selected
+                                                                    ? 'border-violet-500 shadow-md'
+                                                                    : 'border-transparent opacity-70 hover:opacity-100',
+                                                            )}
+                                                        >
+                                                            <img
+                                                                src={photo.url}
+                                                                alt=""
+                                                                className="size-full object-cover"
+                                                            />
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             {slide.type === 'comparison' && (
@@ -465,6 +546,16 @@ export function StoryboardReview({
                     );
                 })}
             </div>
+
+            <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addSlide}
+            >
+                <Plus className="size-4" />
+                Add a scene
+            </Button>
 
             <InputError message={errors.slides} />
 

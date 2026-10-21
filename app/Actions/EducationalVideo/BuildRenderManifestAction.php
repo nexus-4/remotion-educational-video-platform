@@ -67,10 +67,26 @@ class BuildRenderManifestAction
             'template' => $video->template->value,
             'format' => $video->format->value,
             'animationStyle' => $video->animation_style->value,
+            'logoFile' => $this->copyLogo($video, $generatedPath),
             'slides' => $manifestSlides,
         ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         Log::info("[EducationalVideo #{$video->id}] Render manifest written", ['path' => $generatedPath.'/manifest.json']);
+    }
+
+    /**
+     * Copy the institution logo (if one was uploaded) into the generated assets folder,
+     * returning its manifest-relative path, or null when there isn't one.
+     */
+    private function copyLogo(EducationalVideo $video, string $generatedPath): ?string
+    {
+        if ($video->logo_path === null) {
+            return null;
+        }
+
+        File::copy(Storage::disk('local')->path($video->logo_path), $generatedPath.'/logo.png');
+
+        return 'logo.png';
     }
 
     /**

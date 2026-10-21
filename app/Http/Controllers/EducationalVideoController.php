@@ -63,8 +63,22 @@ class EducationalVideoController extends Controller
             ),
             'templates' => $this->options(VideoTemplate::cases()),
             'formats' => $this->options(VideoFormat::cases()),
-            'illustrationStyles' => $this->options(IllustrationStyle::cases()),
-            'animationStyles' => $this->options(AnimationStyle::cases()),
+            'illustrationStyles' => array_map(
+                fn (IllustrationStyle $style): array => [
+                    'value' => $style->value,
+                    'label' => $style->label(),
+                    'previewUrl' => $this->illustrationStylePreviewUrl($style),
+                ],
+                IllustrationStyle::cases(),
+            ),
+            'animationStyles' => array_map(
+                fn (AnimationStyle $style): array => [
+                    'value' => $style->value,
+                    'label' => $style->label(),
+                    'previewUrl' => $this->animationStylePreviewUrl($style),
+                ],
+                AnimationStyle::cases(),
+            ),
         ]);
     }
 
@@ -75,11 +89,24 @@ class EducationalVideoController extends Controller
     {
         $data = $request->validated();
 
-        $sourcePdfPath = $request->file('pdf')->store('educational-videos/pdfs', 'local');
+        $sourcePdfPath = $request->hasFile('pdf')
+            ? $request->file('pdf')->store('educational-videos/pdfs', 'local')
+            : null;
+
+        $userPhotos = collect($request->file('photos', []))
+            ->map(fn ($photo) => $photo->store('educational-videos/user-photos', 'public'))
+            ->all();
+
+        $logoPath = $request->hasFile('logo')
+            ? $request->file('logo')->store('educational-videos/logos', 'local')
+            : null;
 
         $video = EducationalVideo::create([
             'title' => $data['title'] ?? null,
             'source_pdf_path' => $sourcePdfPath,
+            'topic' => $data['topic'] ?? null,
+            'user_photos' => $userPhotos === [] ? null : $userPhotos,
+            'logo_path' => $logoPath,
             'voice' => $data['voice'],
             'template' => $data['template'],
             'format' => $data['format'],
@@ -119,6 +146,9 @@ class EducationalVideoController extends Controller
                 ],
                 'slideTimings' => $video->slide_timings,
                 'remediationVideoUrl' => $video->remediation_video_path ? Storage::disk('public')->url($video->remediation_video_path) : null,
+                'userPhotos' => collect($video->user_photos ?? [])
+                    ->map(fn (string $path): array => ['path' => $path, 'url' => Storage::disk('public')->url($path)])
+                    ->all(),
                 'scenePreviews' => $this->scenePreviews($video->template),
                 'slides' => collect($video->storyboard['slides'] ?? [])
                     ->values()
@@ -130,6 +160,7 @@ class EducationalVideoController extends Controller
                         'bullets' => $slide['bullets'] ?? null,
                         'formula' => $slide['formula'] ?? null,
                         'imagePrompt' => $slide['imagePrompt'] ?? null,
+                        'userPhotoPath' => $slide['userPhotoPath'] ?? null,
                         'leftLabel' => $slide['leftLabel'] ?? null,
                         'leftItems' => $slide['leftItems'] ?? null,
                         'rightLabel' => $slide['rightLabel'] ?? null,
@@ -160,13 +191,16 @@ class EducationalVideoController extends Controller
 
         $slides = collect($request->validated('slides'))
             ->map(fn (array $edited): array => [
-                ...$originalSlides[$edited['originalIndex']],
+                // A slide added during review (negative `originalIndex`) has no AI-written
+                // slide to fall back to — it only carries the fields explicitly listed below.
+                ...($originalSlides[$edited['originalIndex']] ?? []),
                 'type' => $edited['type'],
                 'heading' => $edited['heading'],
                 'narration' => $edited['narration'],
                 'bullets' => $edited['bullets'] ?? null,
                 'formula' => $edited['formula'] ?? null,
                 'imagePrompt' => $edited['imagePrompt'] ?? null,
+                'userPhotoPath' => $edited['userPhotoPath'] ?? null,
                 'leftLabel' => $edited['leftLabel'] ?? null,
                 'leftItems' => $edited['leftItems'] ?? null,
                 'rightLabel' => $edited['rightLabel'] ?? null,
@@ -247,6 +281,28 @@ class EducationalVideoController extends Controller
     private function voiceSampleUrl(VoiceType $voice): ?string
     {
         $path = "voice-samples/{$voice->value}.mp3";
+
+        return Storage::disk('public')->exists($path) ? Storage::disk('public')->url($path) : null;
+    }
+
+    /**
+     * The public URL of the pre-generated reference illustration for an illustration style,
+     * if it has been generated.
+     */
+    private function illustrationStylePreviewUrl(IllustrationStyle $style): ?string
+    {
+        $path = "illustration-style-previews/{$style->value}.png";
+
+        return Storage::disk('public')->exists($path) ? Storage::disk('public')->url($path) : null;
+    }
+
+    /**
+     * The public URL of the pre-rendered reference clip for an animation style, if it has
+     * been generated.
+     */
+    private function animationStylePreviewUrl(AnimationStyle $style): ?string
+    {
+        $path = "animation-style-previews/{$style->value}.mp4";
 
         return Storage::disk('public')->exists($path) ? Storage::disk('public')->url($path) : null;
     }

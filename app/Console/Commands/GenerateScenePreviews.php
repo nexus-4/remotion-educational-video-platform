@@ -110,7 +110,7 @@ class GenerateScenePreviews extends Command
                 $result = Process::path($remotionPath)
                     ->timeout((int) config('services.remotion.render_timeout'))
                     ->run([
-                        'npx', 'remotion', 'still', 'EducationalVideo',
+                        config('services.remotion.cli'), 'still', 'EducationalVideo',
                         $outputRelativePath,
                         '--props='.json_encode(['videoId' => $previewId]),
                         '--frame='.self::PREVIEW_FRAME,

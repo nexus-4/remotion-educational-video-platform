@@ -21,7 +21,8 @@ class StoreEducationalVideoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pdf' => ['required', 'file', 'mimes:pdf', 'max:20480'],
+            'pdf' => ['required_without:topic', 'file', 'mimes:pdf', 'max:20480'],
+            'topic' => ['required_without:pdf', 'string', 'max:1000'],
             'title' => ['nullable', 'string', 'max:255'],
             'voice' => ['required', Rule::enum(VoiceType::class)],
             'template' => ['required', Rule::enum(VideoTemplate::class)],
@@ -30,6 +31,9 @@ class StoreEducationalVideoRequest extends FormRequest
             'animation_style' => ['required', Rule::enum(AnimationStyle::class)],
             'content_focus' => ['nullable', 'string', 'max:500'],
             'interactive' => ['sometimes', 'boolean'],
+            'photos' => ['nullable', 'array', 'max:10'],
+            'photos.*' => ['file', 'image', 'max:10240'],
+            'logo' => ['nullable', 'file', 'image', 'max:2048'],
         ];
     }
 }

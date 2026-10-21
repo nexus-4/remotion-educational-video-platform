@@ -17,7 +17,10 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property string|null $title
- * @property string $source_pdf_path
+ * @property string|null $source_pdf_path
+ * @property string|null $topic
+ * @property array<int, string>|null $user_photos
+ * @property string|null $logo_path
  * @property VoiceType $voice
  * @property VideoTemplate $template
  * @property VideoFormat $format
@@ -39,7 +42,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['title', 'source_pdf_path', 'voice', 'template', 'format', 'illustration_style', 'animation_style', 'content_focus', 'interactive', 'status', 'progress', 'storyboard', 'audio_manifest', 'worksheet', 'interactive_checkpoint', 'slide_timings', 'video_path', 'remediation_video_path', 'thumbnail_path', 'error'])]
+#[Fillable(['title', 'source_pdf_path', 'topic', 'user_photos', 'logo_path', 'voice', 'template', 'format', 'illustration_style', 'animation_style', 'content_focus', 'interactive', 'status', 'progress', 'storyboard', 'audio_manifest', 'worksheet', 'interactive_checkpoint', 'slide_timings', 'video_path', 'remediation_video_path', 'thumbnail_path', 'error'])]
 class EducationalVideo extends Model
 {
     /** @use HasFactory<EducationalVideoFactory> */
@@ -63,6 +66,7 @@ class EducationalVideo extends Model
             'worksheet' => 'array',
             'interactive_checkpoint' => 'array',
             'slide_timings' => 'array',
+            'user_photos' => 'array',
         ];
     }
 }

@@ -1,6 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
-import { Clock3, FileText, Upload, Zap } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Clock3, FileText, ImagePlus, Upload, X, Zap } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import EducationalVideoController from '@/actions/App/Http/Controllers/EducationalVideoController';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -20,13 +20,14 @@ type Option = {
 };
 
 type VoiceOption = Option & { sampleUrl: string | null };
+type StyleOption = Option & { previewUrl: string | null };
 
 type PageProps = {
     voices: VoiceOption[];
     templates: Option[];
     formats: Option[];
-    illustrationStyles: Option[];
-    animationStyles: Option[];
+    illustrationStyles: StyleOption[];
+    animationStyles: StyleOption[];
 };
 
 const STEPS = ['Upload', 'Template', 'Voice & style', 'Review'];
@@ -56,7 +57,13 @@ export default function CreateEducationalVideo({
         animationStyles[0]?.value ?? '',
     );
     const [interactive, setInteractive] = useState(false);
+    const [sourceMode, setSourceMode] = useState<'file' | 'topic'>('file');
+    const [topic, setTopic] = useState('');
+    const [photos, setPhotos] = useState<File[]>([]);
+    const [logo, setLogo] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const photosInputRef = useRef<HTMLInputElement>(null);
+    const logoInputRef = useRef<HTMLInputElement>(null);
 
     const goNext = () =>
         setStep((current) => Math.min(current + 1, STEPS.length - 1));
@@ -73,6 +80,67 @@ export default function CreateEducationalVideo({
         setFileName(file.name);
     };
 
+    const syncPhotosInput = (files: File[]) => {
+        if (!photosInputRef.current) {
+            return;
+        }
+
+        const dataTransfer = new DataTransfer();
+        files.forEach((file) => dataTransfer.items.add(file));
+        photosInputRef.current.files = dataTransfer.files;
+    };
+
+    const addPhotos = (files: FileList | null) => {
+        if (!files) {
+            return;
+        }
+
+        const next = [...photos, ...Array.from(files)];
+        setPhotos(next);
+        syncPhotosInput(next);
+    };
+
+    const removePhoto = (index: number) => {
+        const next = photos.filter((_, i) => i !== index);
+        setPhotos(next);
+        syncPhotosInput(next);
+    };
+
+    const photoPreviews = useMemo(
+        () => photos.map((file) => URL.createObjectURL(file)),
+        [photos],
+    );
+
+    useEffect(() => {
+        return () => {
+            photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+        };
+    }, [photoPreviews]);
+
+    const acceptLogo = (file: File | undefined) => {
+        if (!file || !logoInputRef.current) {
+            return;
+        }
+
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        logoInputRef.current.files = dataTransfer.files;
+        setLogo(file);
+    };
+
+    const logoPreview = useMemo(
+        () => (logo ? URL.createObjectURL(logo) : null),
+        [logo],
+    );
+
+    useEffect(() => {
+        return () => {
+            if (logoPreview) {
+                URL.revokeObjectURL(logoPreview);
+            }
+        };
+    }, [logoPreview]);
+
     const stepPanelClass = (index: number) =>
         cn('space-y-6', step === index ? 'block' : 'hidden');
 
@@ -86,8 +154,9 @@ export default function CreateEducationalVideo({
                         Let&rsquo;s make a video
                     </h1>
                     <p className="mt-1 text-muted-foreground">
-                        Upload a lesson PDF and we&rsquo;ll turn it into a
-                        narrated, animated video for your students.
+                        Upload a lesson PDF — or just describe a topic — and
+                        we&rsquo;ll turn it into a narrated, animated video for
+                        your students.
                     </p>
                 </div>
 
@@ -185,71 +254,265 @@ export default function CreateEducationalVideo({
                                             />
                                         </div>
 
-                                        <div
-                                            onDragOver={(event) => {
-                                                event.preventDefault();
-                                                setIsDraggingOver(true);
-                                            }}
-                                            onDragLeave={() =>
-                                                setIsDraggingOver(false)
-                                            }
-                                            onDrop={(event) => {
-                                                event.preventDefault();
-                                                setIsDraggingOver(false);
-                                                acceptFile(
-                                                    event.dataTransfer.files[0],
-                                                );
-                                            }}
-                                            onClick={() =>
-                                                fileInputRef.current?.click()
-                                            }
-                                            className={cn(
-                                                'flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors',
-                                                isDraggingOver
-                                                    ? 'border-violet-500 bg-violet-50 dark:bg-violet-500/10'
-                                                    : 'border-violet-200 hover:border-violet-400 dark:border-white/15',
-                                            )}
-                                        >
-                                            {fileName ? (
-                                                <>
-                                                    <FileText className="size-8 text-violet-600" />
-                                                    <p className="font-medium text-violet-950 dark:text-white">
-                                                        {fileName}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Click to choose a
-                                                        different file
-                                                    </p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Upload className="size-8 text-violet-500" />
-                                                    <p className="font-medium text-violet-950 dark:text-white">
-                                                        Drop your PDF here, or
-                                                        click to browse
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        PDF, up to 20MB
-                                                    </p>
-                                                </>
-                                            )}
+                                        <div className="grid gap-2">
+                                            <Label>Source</Label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setSourceMode('file')
+                                                    }
+                                                    className={cn(
+                                                        'rounded-xl border-2 px-4 py-2 text-sm font-semibold transition-all',
+                                                        sourceMode === 'file'
+                                                            ? 'border-violet-500 bg-violet-50/60 text-violet-950 shadow-md dark:bg-violet-500/10 dark:text-white'
+                                                            : 'border-transparent bg-white/70 text-muted-foreground hover:border-violet-200 dark:bg-white/5 dark:hover:border-violet-500/30',
+                                                    )}
+                                                >
+                                                    Upload a file
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setSourceMode('topic')
+                                                    }
+                                                    className={cn(
+                                                        'rounded-xl border-2 px-4 py-2 text-sm font-semibold transition-all',
+                                                        sourceMode === 'topic'
+                                                            ? 'border-violet-500 bg-violet-50/60 text-violet-950 shadow-md dark:bg-violet-500/10 dark:text-white'
+                                                            : 'border-transparent bg-white/70 text-muted-foreground hover:border-violet-200 dark:bg-white/5 dark:hover:border-violet-500/30',
+                                                    )}
+                                                >
+                                                    Describe a topic
+                                                </button>
+                                            </div>
+                                        </div>
 
+                                        {sourceMode === 'file' ? (
+                                            <div>
+                                                <div
+                                                    onDragOver={(event) => {
+                                                        event.preventDefault();
+                                                        setIsDraggingOver(true);
+                                                    }}
+                                                    onDragLeave={() =>
+                                                        setIsDraggingOver(false)
+                                                    }
+                                                    onDrop={(event) => {
+                                                        event.preventDefault();
+                                                        setIsDraggingOver(
+                                                            false,
+                                                        );
+                                                        acceptFile(
+                                                            event.dataTransfer
+                                                                .files[0],
+                                                        );
+                                                    }}
+                                                    onClick={() =>
+                                                        fileInputRef.current?.click()
+                                                    }
+                                                    className={cn(
+                                                        'flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors',
+                                                        isDraggingOver
+                                                            ? 'border-violet-500 bg-violet-50 dark:bg-violet-500/10'
+                                                            : 'border-violet-200 hover:border-violet-400 dark:border-white/15',
+                                                    )}
+                                                >
+                                                    {fileName ? (
+                                                        <>
+                                                            <FileText className="size-8 text-violet-600" />
+                                                            <p className="font-medium text-violet-950 dark:text-white">
+                                                                {fileName}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Click to choose
+                                                                a different file
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="size-8 text-violet-500" />
+                                                            <p className="font-medium text-violet-950 dark:text-white">
+                                                                Drop your PDF
+                                                                here, or click
+                                                                to browse
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                PDF, up to 20MB
+                                                            </p>
+                                                        </>
+                                                    )}
+
+                                                    <input
+                                                        ref={fileInputRef}
+                                                        id="pdf"
+                                                        type="file"
+                                                        name="pdf"
+                                                        accept="application/pdf"
+                                                        required
+                                                        className="hidden"
+                                                        onChange={(event) =>
+                                                            acceptFile(
+                                                                event.target
+                                                                    .files?.[0],
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <InputError
+                                                    message={errors.pdf}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="topic">
+                                                    What should the video be
+                                                    about?
+                                                </Label>
+                                                <Textarea
+                                                    id="topic"
+                                                    name="topic"
+                                                    value={topic}
+                                                    onChange={(event) =>
+                                                        setTopic(
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="e.g. The water cycle and how rain forms"
+                                                    rows={4}
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.topic}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="photos">
+                                                Add your own photos (optional)
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                Upload photos you&rsquo;d like
+                                                to use to illustrate specific
+                                                slides — you&rsquo;ll be able to
+                                                assign them once you review the
+                                                storyboard.
+                                            </p>
                                             <input
-                                                ref={fileInputRef}
-                                                id="pdf"
+                                                ref={photosInputRef}
+                                                id="photos"
                                                 type="file"
-                                                name="pdf"
-                                                accept="application/pdf"
-                                                required
+                                                name="photos[]"
+                                                accept="image/*"
+                                                multiple
                                                 className="hidden"
                                                 onChange={(event) =>
-                                                    acceptFile(
+                                                    addPhotos(
+                                                        event.target.files,
+                                                    )
+                                                }
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-fit"
+                                                onClick={() =>
+                                                    photosInputRef.current?.click()
+                                                }
+                                            >
+                                                <ImagePlus className="size-4" />
+                                                Add photos
+                                            </Button>
+
+                                            {photos.length > 0 && (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {photos.map(
+                                                        (file, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="group relative size-16 overflow-hidden rounded-lg border border-violet-100 dark:border-white/10"
+                                                            >
+                                                                <img
+                                                                    src={
+                                                                        photoPreviews[
+                                                                            index
+                                                                        ]
+                                                                    }
+                                                                    alt={
+                                                                        file.name
+                                                                    }
+                                                                    className="size-full object-cover"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        removePhoto(
+                                                                            index,
+                                                                        )
+                                                                    }
+                                                                    className="absolute top-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                                                >
+                                                                    <X className="size-3" />
+                                                                </button>
+                                                            </div>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            )}
+                                            <InputError
+                                                message={errors.photos}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="logo">
+                                                Institution logo (optional)
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                Shown in the bottom-right corner
+                                                throughout the video.
+                                            </p>
+                                            <input
+                                                ref={logoInputRef}
+                                                id="logo"
+                                                type="file"
+                                                name="logo"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(event) =>
+                                                    acceptLogo(
                                                         event.target.files?.[0],
                                                     )
                                                 }
                                             />
+                                            <div className="flex items-center gap-3">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-fit"
+                                                    onClick={() =>
+                                                        logoInputRef.current?.click()
+                                                    }
+                                                >
+                                                    <ImagePlus className="size-4" />
+                                                    {logo
+                                                        ? 'Replace logo'
+                                                        : 'Add logo'}
+                                                </Button>
+
+                                                {logoPreview && (
+                                                    <img
+                                                        src={logoPreview}
+                                                        alt={logo?.name}
+                                                        className="size-12 rounded-lg border border-violet-100 object-contain dark:border-white/10"
+                                                    />
+                                                )}
+                                            </div>
+                                            <InputError message={errors.logo} />
                                         </div>
-                                        <InputError message={errors.pdf} />
                                     </div>
 
                                     {/* Step 2: Template */}
@@ -308,13 +571,16 @@ export default function CreateEducationalVideo({
 
                                         <div className="space-y-3">
                                             <Label>Illustration style</Label>
-                                            <div className="grid grid-cols-3 gap-3">
+                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                                 {illustrationStyles.map(
                                                     (option) => (
                                                         <StyleSwatch
                                                             key={option.value}
                                                             value={option.value}
                                                             label={option.label}
+                                                            previewUrl={
+                                                                option.previewUrl
+                                                            }
                                                             selected={
                                                                 illustrationStyle ===
                                                                 option.value
@@ -344,6 +610,9 @@ export default function CreateEducationalVideo({
                                                             key={option.value}
                                                             value={option.value}
                                                             label={option.label}
+                                                            previewUrl={
+                                                                option.previewUrl
+                                                            }
                                                             selected={
                                                                 animationStyle ===
                                                                 option.value
@@ -441,12 +710,28 @@ export default function CreateEducationalVideo({
                                             </p>
                                             <dl className="space-y-1 text-muted-foreground">
                                                 <div className="flex justify-between gap-4">
-                                                    <dt>File</dt>
+                                                    <dt>
+                                                        {sourceMode === 'file'
+                                                            ? 'File'
+                                                            : 'Topic'}
+                                                    </dt>
                                                     <dd className="truncate text-right">
-                                                        {fileName ??
-                                                            'No file chosen'}
+                                                        {sourceMode === 'file'
+                                                            ? (fileName ??
+                                                              'No file chosen')
+                                                            : topic.trim() ||
+                                                              'No topic entered'}
                                                     </dd>
                                                 </div>
+                                                {photos.length > 0 && (
+                                                    <div className="flex justify-between gap-4">
+                                                        <dt>Photos</dt>
+                                                        <dd>
+                                                            {photos.length}{' '}
+                                                            added
+                                                        </dd>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-between gap-4">
                                                     <dt>Template</dt>
                                                     <dd>
@@ -498,7 +783,10 @@ export default function CreateEducationalVideo({
                                                 type="button"
                                                 onClick={goNext}
                                                 disabled={
-                                                    step === 0 && !fileName
+                                                    step === 0 &&
+                                                    (sourceMode === 'file'
+                                                        ? !fileName
+                                                        : !topic.trim())
                                                 }
                                             >
                                                 Next

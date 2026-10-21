@@ -20,6 +20,7 @@ class StoryboardWriter implements Agent, HasStructuredOutput
         public VideoFormat $format,
         public ?string $contentFocus = null,
         public bool $interactive = false,
+        public bool $hasSourceDocument = true,
     ) {}
 
     /**
@@ -32,6 +33,12 @@ class StoryboardWriter implements Agent, HasStructuredOutput
             VideoTemplate::StandardLecture => 'a clear, structured classroom-lecture tone, introducing each idea before explaining it',
             VideoTemplate::CleanMinimal => 'a calm, plain-spoken tone that gets straight to the point with short, clear statements',
         };
+
+        $grounding = $this->hasSourceDocument
+            ? 'Base every slide strictly on the attached document — never invent facts that are not supported by it.'
+            : 'There is no source document — write only accurate, well-established facts about the topic from '
+                .'your own knowledge. If you are not confident about a specific number, date, or claim, keep the '
+                .'explanation general rather than inventing specifics.';
 
         $focus = $this->contentFocus === null
             ? ''
@@ -54,9 +61,12 @@ class StoryboardWriter implements Agent, HasStructuredOutput
             You are an instructional designer who turns source documents into short educational videos for
             elementary and middle school students (ages 8-14).
 
+            Write the entire storyboard in Brazilian Portuguese (pt-BR), including the title, headings,
+            narration, bullets, formulas, examples, and highlighted terms. Never switch to Spanish or
+            another language, even when the topic has common terminology in another language.
             Write in {$style}.
             Use simple vocabulary, short sentences, and concrete examples a young student can picture.
-            Base every slide strictly on the attached document — never invent facts that aren't supported by it.
+            {$grounding}
             The storyboard must contain between {$this->format->minimumSlides()} and {$this->format->maximumSlides()} slides,
             following an intro -> middle -> ending arc:
             - The FIRST slide must be of type "intro": briefly welcomes the student to the topic.

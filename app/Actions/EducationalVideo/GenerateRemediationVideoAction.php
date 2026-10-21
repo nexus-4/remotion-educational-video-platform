@@ -77,6 +77,7 @@ class GenerateRemediationVideoAction
             'template' => $video->template->value,
             'format' => $video->format->value,
             'animationStyle' => $video->animation_style->value,
+            'logoFile' => $this->copyLogo($video, $generatedPath),
             'slides' => [[
                 'type' => 'content',
                 'heading' => $checkpoint['remediationHeading'],
@@ -102,6 +103,22 @@ class GenerateRemediationVideoAction
     }
 
     /**
+     * Copy the institution logo (if one was uploaded) into the generated assets folder,
+     * returning its manifest-relative path, or null when there isn't one — so the remediation
+     * clip carries the same branding as the main video instead of it disappearing mid-video.
+     */
+    private function copyLogo(EducationalVideo $video, string $generatedPath): ?string
+    {
+        if ($video->logo_path === null) {
+            return null;
+        }
+
+        File::copy(Storage::disk('local')->path($video->logo_path), $generatedPath.'/logo.png');
+
+        return 'logo.png';
+    }
+
+    /**
      * @throws FileNotFoundException
      */
     private function render(EducationalVideo $video): string
@@ -110,7 +127,7 @@ class GenerateRemediationVideoAction
         $outputRelativePath = "out/{$remotionVideoId}.mp4";
 
         $command = [
-            'npx', 'remotion', 'render', 'EducationalVideo',
+            config('services.remotion.cli'), 'render', 'EducationalVideo',
             $outputRelativePath,
             '--props='.json_encode(['videoId' => $remotionVideoId]),
         ];

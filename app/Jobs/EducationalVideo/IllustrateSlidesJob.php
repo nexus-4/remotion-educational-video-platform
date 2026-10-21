@@ -2,6 +2,7 @@
 
 namespace App\Jobs\EducationalVideo;
 
+use App\Actions\EducationalVideo\AssignUserPhotoToSlideAction;
 use App\Actions\EducationalVideo\IllustrateSlideAction;
 use App\Jobs\EducationalVideo\Concerns\IsResilientVideoJob;
 use App\Models\EducationalVideo;
@@ -18,19 +19,27 @@ class IllustrateSlidesJob implements ShouldQueue
 
     public function __construct(public EducationalVideo $video) {}
 
-    public function handle(IllustrateSlideAction $action): void
+    public function handle(IllustrateSlideAction $action, AssignUserPhotoToSlideAction $assignPhotoAction): void
     {
         $slides = $this->video->audio_manifest;
         $total = count($slides);
 
         $illustratedSlides = collect($slides)
             ->values()
-            ->map(function (array $slide, int $index) use ($action, $total): array {
+            ->map(function (array $slide, int $index) use ($action, $assignPhotoAction, $total): array {
+                $position = $index + 1;
+                $userPhotoPath = $slide['userPhotoPath'] ?? null;
+
+                if ($userPhotoPath !== null) {
+                    $this->video->update(['progress' => "Using your photo for slide {$position} of {$total}: {$slide['heading']}"]);
+                    Log::info("[EducationalVideo #{$this->video->id}] Using uploaded photo for slide {$position}/{$total}", ['photo' => $userPhotoPath]);
+
+                    return [...$slide, 'imagePath' => $assignPhotoAction->handle($this->video, $userPhotoPath, $index)];
+                }
+
                 if (blank($slide['imagePrompt'] ?? null)) {
                     return $slide;
                 }
-
-                $position = $index + 1;
 
                 $this->video->update(['progress' => "Illustrating slide {$position} of {$total}: {$slide['heading']}"]);
                 Log::info("[EducationalVideo #{$this->video->id}] Illustrating slide {$position}/{$total}", ['prompt' => $slide['imagePrompt']]);

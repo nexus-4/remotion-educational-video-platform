@@ -31,6 +31,14 @@ class IllustrateSlideAction
                 ->quality('low')
                 ->generate(provider: [Lab::OpenAI, Lab::Gemini]);
 
+            Log::info('[METRICS] image usage', [
+                'video_id' => $video->id,
+                'slide_index' => $index,
+                'provider' => $image->meta->provider,
+                'model' => $image->meta->model,
+                'usage' => $image->usage->toArray(),
+            ]);
+
             return $image->storeAs("educational-videos/{$video->id}/images", "slide-{$index}.png", 'local');
         } catch (Throwable $e) {
             Log::warning("[EducationalVideo #{$video->id}] Illustration failed for slide {$index}, continuing without it", [

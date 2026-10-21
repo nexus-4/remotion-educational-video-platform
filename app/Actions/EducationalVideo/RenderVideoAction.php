@@ -20,9 +20,10 @@ class RenderVideoAction
     public function handle(EducationalVideo $video): string
     {
         $outputRelativePath = "out/{$video->id}.mp4";
+        $remotionExecutable = $this->remotionExecutable();
 
         $command = [
-            'npx', 'remotion', 'render', 'EducationalVideo',
+            $remotionExecutable, 'render', 'EducationalVideo',
             $outputRelativePath,
             '--props='.json_encode(['videoId' => (string) $video->id]),
         ];
@@ -70,7 +71,7 @@ class RenderVideoAction
         $outputRelativePath = "out/{$video->id}-thumb.jpg";
 
         $command = [
-            'npx', 'remotion', 'still', 'EducationalVideo',
+            $this->remotionExecutable(), 'still', 'EducationalVideo',
             $outputRelativePath,
             '--props='.json_encode(['videoId' => (string) $video->id]),
             '--frame=60',
@@ -94,5 +95,10 @@ class RenderVideoAction
         Storage::disk('public')->put($storedPath, File::get($renderedAbsolutePath));
 
         $video->update(['thumbnail_path' => $storedPath]);
+    }
+
+    private function remotionExecutable(): string
+    {
+        return config('services.remotion.cli');
     }
 }

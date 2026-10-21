@@ -7,6 +7,7 @@ enum IllustrationStyle: string
     case AcademicDiagram = 'academic_diagram';
     case FlatIllustration = 'flat_illustration';
     case HandDrawnSketch = 'hand_drawn_sketch';
+    case Photorealistic = 'photorealistic';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum IllustrationStyle: string
             self::AcademicDiagram => 'Academic Diagram',
             self::FlatIllustration => 'Flat Illustration',
             self::HandDrawnSketch => 'Hand-Drawn Sketch',
+            self::Photorealistic => 'Realistic Photo',
         };
     }
 
@@ -37,6 +39,11 @@ enum IllustrationStyle: string
             self::HandDrawnSketch => 'Render as a hand-drawn pencil or ink sketch: loose expressive '
                 .'lines, like a doodle in a student\'s notebook margin, mostly black and white with '
                 .'sparing color accents. No text, no labels, no watermarks, no photorealism.',
+
+            self::Photorealistic => 'Render as a realistic photograph: natural lighting, real-world '
+                .'textures and materials, a candid documentary-style composition, as if captured with a '
+                .'professional camera. No illustration style, no cartoon look, no vector shapes or visible '
+                .'brush strokes, no text, no labels, no watermarks.',
         };
     }
 }

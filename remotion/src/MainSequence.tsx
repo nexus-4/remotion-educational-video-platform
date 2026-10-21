@@ -1,5 +1,5 @@
 import { Audio } from "@remotion/media";
-import { AbsoluteFill, Series, staticFile } from "remotion";
+import { AbsoluteFill, Img, Series, staticFile } from "remotion";
 import { Slide } from "./components/Slide";
 import { fontFamily } from "./font";
 import type { EducationalVideoProps } from "./types";
@@ -36,6 +36,19 @@ export const MainSequence: React.FC<EducationalVideoProps> = ({
           </Series.Sequence>
         ))}
       </Series>
+
+      {manifest.logoFile && (
+        <Img
+          src={staticFile(`generated/${videoId}/${manifest.logoFile}`)}
+          style={{
+            position: "absolute",
+            bottom: 24,
+            right: 24,
+            height: 64,
+            width: "auto",
+          }}
+        />
+      )}
     </AbsoluteFill>
   );
 };

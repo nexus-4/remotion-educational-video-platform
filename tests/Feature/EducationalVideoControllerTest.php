@@ -61,6 +61,96 @@ class EducationalVideoControllerTest extends TestCase
             ->assertSessionHasErrors(['pdf', 'voice', 'template', 'format', 'illustration_style', 'animation_style']);
     }
 
+    public function test_store_accepts_a_topic_instead_of_a_pdf()
+    {
+        Bus::fake();
+
+        $response = $this->post(route('educational-videos.store'), [
+            'topic' => 'The water cycle and how rain forms',
+            'voice' => VoiceType::Nova->value,
+            'template' => VideoTemplate::StandardLecture->value,
+            'format' => VideoFormat::Short->value,
+            'illustration_style' => IllustrationStyle::FlatIllustration->value,
+            'animation_style' => AnimationStyle::Underline->value,
+        ]);
+
+        $video = EducationalVideo::first();
+
+        $response->assertRedirect(route('educational-videos.show', $video));
+        $this->assertNull($video->source_pdf_path);
+        $this->assertSame('The water cycle and how rain forms', $video->topic);
+
+        Bus::assertChained([
+            GenerateStoryboardJob::class,
+        ]);
+    }
+
+    public function test_store_accepts_uploaded_photos()
+    {
+        Bus::fake();
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $response = $this->post(route('educational-videos.store'), [
+            'topic' => 'The water cycle and how rain forms',
+            'voice' => VoiceType::Nova->value,
+            'template' => VideoTemplate::StandardLecture->value,
+            'format' => VideoFormat::Short->value,
+            'illustration_style' => IllustrationStyle::FlatIllustration->value,
+            'animation_style' => AnimationStyle::Underline->value,
+            'photos' => [
+                UploadedFile::fake()->image('classroom.jpg'),
+                UploadedFile::fake()->image('specimen.png'),
+            ],
+        ]);
+
+        $video = EducationalVideo::first();
+
+        $response->assertRedirect(route('educational-videos.show', $video));
+        $this->assertCount(2, $video->user_photos);
+        Storage::disk('public')->assertExists($video->user_photos[0]);
+        Storage::disk('public')->assertExists($video->user_photos[1]);
+    }
+
+    public function test_store_accepts_an_uploaded_logo()
+    {
+        Bus::fake();
+        Storage::fake('local');
+
+        $response = $this->post(route('educational-videos.store'), [
+            'topic' => 'The water cycle and how rain forms',
+            'voice' => VoiceType::Nova->value,
+            'template' => VideoTemplate::StandardLecture->value,
+            'format' => VideoFormat::Short->value,
+            'illustration_style' => IllustrationStyle::FlatIllustration->value,
+            'animation_style' => AnimationStyle::Underline->value,
+            'logo' => UploadedFile::fake()->image('school-logo.png'),
+        ]);
+
+        $video = EducationalVideo::first();
+
+        $response->assertRedirect(route('educational-videos.show', $video));
+        $this->assertNotNull($video->logo_path);
+        Storage::disk('local')->assertExists($video->logo_path);
+    }
+
+    public function test_store_rejects_a_non_image_photo()
+    {
+        $response = $this->post(route('educational-videos.store'), [
+            'topic' => 'The water cycle and how rain forms',
+            'voice' => VoiceType::Nova->value,
+            'template' => VideoTemplate::StandardLecture->value,
+            'format' => VideoFormat::Short->value,
+            'illustration_style' => IllustrationStyle::FlatIllustration->value,
+            'animation_style' => AnimationStyle::Underline->value,
+            'photos' => [
+                UploadedFile::fake()->create('notes.pdf', 100, 'application/pdf'),
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['photos.0']);
+    }
+
     public function test_store_creates_a_video_and_dispatches_the_generation_pipeline()
     {
         Bus::fake();
@@ -189,6 +279,56 @@ class EducationalVideoControllerTest extends TestCase
         ]);
     }
 
+    public function test_confirm_storyboard_can_add_a_new_scene_after_deleting_below_the_minimum()
+    {
+        Bus::fake();
+
+        $video = EducationalVideo::factory()->create([
+            'status' => VideoStatus::AwaitingReview,
+            'format' => VideoFormat::Short,
+            'storyboard' => $this->storyboardWithSlides(),
+        ]);
+
+        $slides = collect($this->storyboardWithSlides()['slides'])
+            ->map(fn (array $slide, int $index): array => ['originalIndex' => $index, ...$slide])
+            ->all();
+
+        // Delete one content slide (5 -> 4, below the format's minimum of 5)...
+        unset($slides[1]);
+        $slides = array_values($slides);
+
+        // ...then add a brand new scene back, the way `StoryboardReview`'s "Add a scene"
+        // does: no AI-written slide to reference, so it uses a negative sentinel index.
+        $newSlide = [
+            'originalIndex' => -1,
+            'type' => 'content',
+            'heading' => 'A new scene',
+            'narration' => 'Something the teacher wrote by hand.',
+            'bullets' => null,
+            'formula' => null,
+            'imagePrompt' => null,
+            'userPhotoPath' => null,
+            'leftLabel' => null,
+            'leftItems' => null,
+            'rightLabel' => null,
+            'rightItems' => null,
+            'steps' => null,
+            'statValue' => null,
+            'statLabel' => null,
+            'term' => null,
+            'definition' => null,
+        ];
+        array_splice($slides, count($slides) - 1, 0, [$newSlide]);
+
+        $response = $this->post(route('educational-videos.storyboard.confirm', $video), ['slides' => $slides]);
+
+        $response->assertRedirect(route('educational-videos.show', $video));
+
+        $video->refresh();
+        $this->assertCount(5, $video->storyboard['slides']);
+        $this->assertSame('A new scene', $video->storyboard['slides'][3]['heading']);
+    }
+
     public function test_confirm_storyboard_can_reclassify_a_slide_to_a_new_scene_type()
     {
         Bus::fake();
@@ -228,6 +368,43 @@ class EducationalVideoControllerTest extends TestCase
 
         $this->post(route('educational-videos.storyboard.confirm', $video), ['slides' => $slides])
             ->assertSessionHasErrors(['slides.1.leftLabel', 'slides.1.leftItems', 'slides.1.rightLabel', 'slides.1.rightItems']);
+    }
+
+    public function test_confirm_storyboard_can_assign_an_uploaded_photo_to_a_slide()
+    {
+        Bus::fake();
+
+        $video = EducationalVideo::factory()->create([
+            'status' => VideoStatus::AwaitingReview,
+            'format' => VideoFormat::Short,
+            'storyboard' => $this->storyboardWithSlides(),
+            'user_photos' => ['educational-videos/user-photos/classroom.jpg'],
+        ]);
+
+        $slides = collect($this->storyboardWithSlides()['slides'])->map(fn (array $slide, int $index): array => ['originalIndex' => $index, ...$slide])->all();
+        $slides[1]['userPhotoPath'] = 'educational-videos/user-photos/classroom.jpg';
+
+        $this->post(route('educational-videos.storyboard.confirm', $video), ['slides' => $slides])
+            ->assertRedirect(route('educational-videos.show', $video));
+
+        $video->refresh();
+        $this->assertSame('educational-videos/user-photos/classroom.jpg', $video->storyboard['slides'][1]['userPhotoPath']);
+    }
+
+    public function test_confirm_storyboard_rejects_a_user_photo_path_not_belonging_to_the_video()
+    {
+        $video = EducationalVideo::factory()->create([
+            'status' => VideoStatus::AwaitingReview,
+            'format' => VideoFormat::Short,
+            'storyboard' => $this->storyboardWithSlides(),
+            'user_photos' => ['educational-videos/user-photos/classroom.jpg'],
+        ]);
+
+        $slides = collect($this->storyboardWithSlides()['slides'])->map(fn (array $slide, int $index): array => ['originalIndex' => $index, ...$slide])->all();
+        $slides[1]['userPhotoPath'] = 'educational-videos/user-photos/some-other-video.jpg';
+
+        $this->post(route('educational-videos.storyboard.confirm', $video), ['slides' => $slides])
+            ->assertSessionHasErrors(['slides.1.userPhotoPath']);
     }
 
     public function test_confirming_the_same_storyboard_twice_only_dispatches_one_chain()

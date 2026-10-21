@@ -44,6 +44,7 @@ export type RenderManifest = {
   template: VideoTemplate;
   format: VideoFormatId;
   animationStyle: AnimationStyleId;
+  logoFile?: string | null;
   slides: Slide[];
 };
 

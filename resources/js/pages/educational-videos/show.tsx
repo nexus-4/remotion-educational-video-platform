@@ -19,7 +19,10 @@ import type {
     SlideTiming,
 } from './components/interactive-video-player';
 import { InteractiveVideoPlayer } from './components/interactive-video-player';
-import type { StoryboardSlide } from './components/storyboard-review';
+import type {
+    StoryboardSlide,
+    UserPhoto,
+} from './components/storyboard-review';
 import { StoryboardReview } from './components/storyboard-review';
 
 type EducationalVideoStatus =
@@ -42,6 +45,7 @@ type PageProps = {
         videoUrl: string | null;
         hasWorksheet: boolean;
         scenePreviews: Record<string, string | null>;
+        userPhotos: UserPhoto[];
         slides: StoryboardSlide[];
         interactiveCheckpoint: InteractiveCheckpoint | null;
         slideTimings: SlideTiming[] | null;
@@ -309,6 +313,7 @@ export default function ShowEducationalVideo({ video }: PageProps) {
                                     }
                                     errors={errors}
                                     scenePreviews={video.scenePreviews}
+                                    userPhotos={video.userPhotos}
                                 />
                             </div>
                         ) : video.status !== 'failed' ? (
