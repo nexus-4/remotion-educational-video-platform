@@ -38,7 +38,7 @@ class GenerateScenePreviewsTest extends TestCase
         Audio::fake();
 
         Process::fake(function ($process) {
-            $outputRelativePath = $process->command[4] ?? null;
+            $outputRelativePath = $process->command[3] ?? null;
 
             if ($outputRelativePath) {
                 File::put("{$this->remotionPath}/{$outputRelativePath}", 'fake-png-bytes');
